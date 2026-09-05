@@ -1,0 +1,8 @@
+streamlit
+roboflow
+pillow
+numpy
+opencv-python-headless
+plotly
+requests
+google-generativeai
