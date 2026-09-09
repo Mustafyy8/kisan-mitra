@@ -153,6 +153,13 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(params["lat"], "30.900000")
         self.assertEqual(params["lon"], "75.850000")
 
+    def test_sensor_without_gps_does_not_override_saved_location(self):
+        # A real reading without gps must not resurrect the demo-default
+        # coordinates and hijack the weather query.
+        self.client.post("/api/sensors", json={"npk": {"n": 90, "p": 42, "k": 43}, "moisture": 42, "source": "serial"})
+        self.client.post("/api/profile", json={"location": "Pune, IN"})
+        self.assertEqual(edge_server.weather_params(), {"q": "Pune, IN"})
+
     def test_fetch_weather_builds_query_from_params(self):
         edge_server.WEATHER_API_KEY = "test-key"
         with edge_server.weather_lock:

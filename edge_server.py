@@ -81,7 +81,9 @@ DEFAULT_TELEMETRY = {
     "ec": 0.62,
     "organic_carbon": 0.7,
     "rainfall": 150.0,
-    "gps": {"lat": 28.6139, "lng": 77.2090},
+    # Zero coordinates mean "no GPS yet": real Arduino readings provide gps,
+    # and anything else falls back to the farm location for live weather.
+    "gps": {"lat": 0.0, "lng": 0.0},
     "source": "demo",
     "updated_at": None,
 }
