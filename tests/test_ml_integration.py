@@ -139,6 +139,18 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(farm["crop"], "Wheat")
         self.assertEqual(farm["acreage"], 5.0)
 
+    def test_profile_null_fields_are_ignored(self):
+        self.client.post("/api/profile", json={"location": "Pune, IN", "name": "My Farm"})
+        # Explicit null must not turn into the string "None".
+        response = self.client.post("/api/profile", json={"name": None, "location": None})
+        self.assertEqual(response.status_code, 200)
+        farm = response.json["farm"]
+        self.assertEqual(farm["name"], "My Farm")
+        self.assertEqual(farm["location"], "Pune, IN")
+        # An empty string clears the location.
+        self.client.post("/api/profile", json={"location": ""})
+        self.assertEqual(self.client.get("/api/farm").json["farm"]["location"], "")
+
     def test_weather_params_priority(self):
         # 1. No GPS, no farm location: env default city.
         self.assertEqual(edge_server.weather_params(), {"q": edge_server.WEATHER_CITY})

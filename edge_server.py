@@ -496,15 +496,22 @@ def update_profile() -> Response:
         return unauthorized
     payload = request.get_json(silent=True) or {}
     current = profile()
-    name = str(payload.get("name", current["name"])).strip() or current["name"]
-    crop = str(payload.get("crop", current["crop"])).strip() or current["crop"]
+    # Each field defaults to its current value; explicit null means "leave it".
+    name = current["name"]
+    if payload.get("name") is not None:
+        name = str(payload["name"]).strip() or name
+    crop = current["crop"]
+    if payload.get("crop") is not None:
+        crop = str(payload["crop"]).strip() or crop
     try:
         acreage = float(payload.get("acreage", current["acreage"]))
     except (TypeError, ValueError):
         acreage = float(current["acreage"])
     if acreage <= 0:
         return jsonify({"error": "acreage must be a positive number"}), 422
-    location = str(payload.get("location", current.get("location", ""))).strip()
+    location = current.get("location", "")
+    if payload.get("location") is not None:
+        location = str(payload["location"]).strip()
     with closing(db()) as connection:
         connection.execute(
             "UPDATE farm_profile SET name = ?, crop = ?, acreage = ?, location = ? WHERE id = 1",
