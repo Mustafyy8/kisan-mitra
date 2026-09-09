@@ -129,6 +129,58 @@ class EdgeAPITests(unittest.TestCase):
         # High humidity from the weather API should drive the disease alert.
         self.assertTrue(any(alert["title"] == "Disease risk increasing" for alert in body["alerts"]))
 
+    def test_profile_location_partial_update(self):
+        response = self.client.post("/api/profile", json={"location": "Ludhiana, IN"})
+        self.assertEqual(response.status_code, 200)
+        farm = response.json["farm"]
+        self.assertEqual(farm["location"], "Ludhiana, IN")
+        # Unrelated fields are preserved.
+        self.assertEqual(farm["name"], "Kisan Mitra Farm")
+        self.assertEqual(farm["crop"], "Wheat")
+        self.assertEqual(farm["acreage"], 5.0)
+
+    def test_weather_params_priority(self):
+        # 1. No GPS, no farm location: env default city.
+        self.assertEqual(edge_server.weather_params(), {"q": edge_server.WEATHER_CITY})
+        # 2. Farm location saved: city query wins over env default.
+        self.client.post("/api/profile", json={"location": "Ludhiana, IN"})
+        self.assertEqual(edge_server.weather_params(), {"q": "Ludhiana, IN"})
+        # 3. Real GPS from the Arduino beats the saved location.
+        with edge_server.state_lock:
+            edge_server.sensor_data_received = True
+            edge_server.latest_telemetry = edge_server.normalise_telemetry({"source": "serial", "gps": {"lat": 30.9, "lng": 75.85}})
+        params = edge_server.weather_params()
+        self.assertEqual(params["lat"], "30.900000")
+        self.assertEqual(params["lon"], "75.850000")
+
+    def test_fetch_weather_builds_query_from_params(self):
+        edge_server.WEATHER_API_KEY = "test-key"
+        with edge_server.weather_lock:
+            edge_server._weather_cache.clear()
+        captured = {}
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return b'{"main":{"temp":20,"humidity":60},"weather":[{"description":"clear sky"}],"name":"Ludhiana","rain":{"1h":1.5}}'
+
+        def fake_urlopen(url, timeout=3):
+            captured["url"] = url
+            return FakeResponse()
+
+        with mock.patch.object(edge_server, "urlopen", side_effect=fake_urlopen):
+            weather = edge_server.fetch_weather({"q": "Ludhiana, IN"})
+        self.assertEqual(weather["temperature"], 20.0)
+        self.assertEqual(weather["city"], "Ludhiana")
+        self.assertIn("q=Ludhiana%2C+IN", captured["url"])
+        self.assertIn("appid=test-key", captured["url"])
+        self.assertIn("units=metric", captured["url"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

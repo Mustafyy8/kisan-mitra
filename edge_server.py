@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from dotenv import load_dotenv
@@ -90,24 +91,46 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def fetch_weather() -> dict[str, Any] | None:
+def weather_params() -> dict[str, str]:
+    """Where to query OpenWeatherMap: live GPS beats farm location beats env default."""
+    with state_lock:
+        received = sensor_data_received
+        gps = latest_telemetry.get("gps") or {}
+    try:
+        lat, lng = float(gps.get("lat")), float(gps.get("lng"))
+        has_gps = received and (lat != 0.0 or lng != 0.0)
+    except (TypeError, ValueError):
+        has_gps = False
+    if has_gps:
+        return {"lat": f"{lat:.6f}", "lon": f"{lng:.6f}"}
+    location = profile().get("location", "").strip()
+    if location:
+        return {"q": location}
+    return {"q": WEATHER_CITY}
+
+
+def fetch_weather(params: dict[str, str] | None = None) -> dict[str, Any] | None:
     """Current conditions from OpenWeatherMap, or None when offline/unavailable.
 
-    Successful fetches are cached for WEATHER_CACHE_TTL_SECONDS; failures are
-    remembered for WEATHER_RETRY_SECONDS so an offline device does not block on
-    a network timeout for every dashboard update.
+    `params` is a city query ({"q": "Delhi"}) or coordinates ({"lat": ..,
+    "lon": ..}). Successful fetches are cached per query for
+    WEATHER_CACHE_TTL_SECONDS; failures are remembered for
+    WEATHER_RETRY_SECONDS so an offline device does not block on a network
+    timeout for every dashboard update.
     """
     if not WEATHER_API_KEY:
         return None
+    params = params or {"q": WEATHER_CITY}
+    cache_key = json.dumps(params, sort_keys=True)
     now = time.monotonic()
     with weather_lock:
-        cached = _weather_cache.get("data")
-        if cached and now - _weather_cache.get("at", 0) < WEATHER_CACHE_TTL_SECONDS:
-            return cached
-        if _weather_cache.get("failed_at") and now - _weather_cache["failed_at"] < WEATHER_RETRY_SECONDS:
+        entry = _weather_cache.get(cache_key)
+        if entry and entry.get("data") and now - entry.get("at", 0) < WEATHER_CACHE_TTL_SECONDS:
+            return entry["data"]
+        if entry and entry.get("failed_at") and now - entry["failed_at"] < WEATHER_RETRY_SECONDS:
             return None
-    url = (f"https://api.openweathermap.org/data/2.5/weather?q={WEATHER_CITY}"
-           f"&appid={WEATHER_API_KEY}&units=metric")
+    url = ("https://api.openweathermap.org/data/2.5/weather?"
+           + urlencode(params) + f"&appid={WEATHER_API_KEY}&units=metric")
     try:
         with urlopen(url, timeout=3) as response:
             raw = json.loads(response.read().decode("utf-8"))
@@ -121,23 +144,24 @@ def fetch_weather() -> dict[str, Any] | None:
         if rain is not None:
             weather["rainfall"] = float(rain)
         with weather_lock:
-            _weather_cache.update({"data": weather, "at": time.monotonic(), "failed_at": 0})
+            _weather_cache[cache_key] = {"data": weather, "at": time.monotonic(), "failed_at": 0}
         return weather
     except Exception:
         # Offline, revoked key, or rate-limited: fall back to local sensors.
         with weather_lock:
-            _weather_cache["failed_at"] = time.monotonic()
+            _weather_cache.setdefault(cache_key, {})["failed_at"] = time.monotonic()
         return None
 
 
 def with_weather(data: dict[str, Any]) -> dict[str, Any]:
     """Return a deep copy of telemetry enriched with live weather when available.
 
-    Temperature, humidity and rainfall are overlaid from OpenWeatherMap; the
-    local sensor values are kept untouched as the offline fallback.
+    Temperature, humidity and rainfall are overlaid from OpenWeatherMap using
+    the farm's GPS, saved location, or env fallback; the local sensor values
+    are kept untouched as the offline fallback.
     """
     enriched = json.loads(json.dumps(data))
-    weather = fetch_weather()
+    weather = fetch_weather(weather_params())
     if not weather:
         enriched["weather"] = {"source": "sensor", "message": "Local sensor readings (weather API unavailable or not configured)."}
         return enriched
@@ -182,7 +206,8 @@ def initialise_database() -> None:
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 name TEXT NOT NULL,
                 crop TEXT NOT NULL,
-                acreage REAL NOT NULL
+                acreage REAL NOT NULL,
+                location TEXT NOT NULL DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS disease_scans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -190,6 +215,10 @@ def initialise_database() -> None:
                 result TEXT NOT NULL
             );
         """)
+        # Migrate databases created before the location column existed.
+        columns = [row["name"] for row in connection.execute("PRAGMA table_info(farm_profile)")]
+        if "location" not in columns:
+            connection.execute("ALTER TABLE farm_profile ADD COLUMN location TEXT NOT NULL DEFAULT ''")
         connection.execute(
             "INSERT OR IGNORE INTO farm_profile (id, name, crop, acreage) VALUES (1, ?, ?, ?)",
             ("Kisan Mitra Farm", "Wheat", 5.0),
@@ -198,7 +227,7 @@ def initialise_database() -> None:
 
 def profile() -> dict[str, Any]:
     with closing(db()) as connection:
-        row = connection.execute("SELECT name, crop, acreage FROM farm_profile WHERE id = 1").fetchone()
+        row = connection.execute("SELECT name, crop, acreage, location FROM farm_profile WHERE id = 1").fetchone()
     return dict(row)
 
 
@@ -459,20 +488,29 @@ def history() -> Response:
 
 @app.post("/api/profile")
 def update_profile() -> Response:
+    """Partially update the farm profile (name, crop, acreage, location)."""
     unauthorized = require_token()
     if unauthorized:
         return unauthorized
     payload = request.get_json(silent=True) or {}
-    name = str(payload.get("name", "")).strip()
-    crop = str(payload.get("crop", "")).strip()
+    current = profile()
+    name = str(payload.get("name", current["name"])).strip() or current["name"]
+    crop = str(payload.get("crop", current["crop"])).strip() or current["crop"]
     try:
-        acreage = float(payload.get("acreage"))
+        acreage = float(payload.get("acreage", current["acreage"]))
     except (TypeError, ValueError):
-        acreage = 0
-    if not name or not crop or acreage <= 0:
-        return jsonify({"error": "name, crop and a positive acreage are required"}), 422
+        acreage = float(current["acreage"])
+    if acreage <= 0:
+        return jsonify({"error": "acreage must be a positive number"}), 422
+    location = str(payload.get("location", current.get("location", ""))).strip()
     with closing(db()) as connection:
-        connection.execute("UPDATE farm_profile SET name = ?, crop = ?, acreage = ? WHERE id = 1", (name, crop, acreage))
+        connection.execute(
+            "UPDATE farm_profile SET name = ?, crop = ?, acreage = ?, location = ? WHERE id = 1",
+            (name, crop, acreage, location),
+        )
+    # A new location changes which city weather is fetched for: drop the cache.
+    with weather_lock:
+        _weather_cache.clear()
     socketio.emit("telemetry", dashboard_payload())
     return jsonify({"ok": True, "farm": profile()})
 

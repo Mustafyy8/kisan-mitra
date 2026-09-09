@@ -7,7 +7,9 @@ function percent(n) { return `${Math.round(n)}%`; }
 function render(data) {
   const { farm, telemetry: t, health, alerts, recommendation, edge, soil_assessment: soilAssessment } = data;
   value('farm-name', farm.name);
-  value('farm-summary', `${farm.acreage} acres of ${farm.crop}. Your farm is being watched locally, even when the internet is off.`);
+  value('farm-summary', `${farm.acreage} acres of ${farm.crop}${farm.location ? ' in ' + farm.location : ''}. Your farm is being watched locally, even when the internet is off.`);
+  const locationInput = $('farm-location');
+  if (document.activeElement !== locationInput) locationInput.value = farm.location || '';
   value('overall-health', health.overall);
   value('recommendation-title', recommendation.title.toUpperCase());
   value('recommendation-message', recommendation.message);
@@ -42,6 +44,23 @@ $('scan-leaf').addEventListener('click', async () => {
   try { const response = await fetch('/api/disease', { method: 'POST', body: form }); const result = await response.json(); if (!response.ok) throw new Error(result.error); showScan(result); }
   catch (error) { $('scan-result').textContent = error.message || 'Diagnosis failed. Try another image.'; }
   finally { button.disabled = false; button.textContent = 'Run local diagnosis'; }
+});
+
+$('save-location').addEventListener('click', async () => {
+  const location = $('farm-location').value.trim();
+  const status = $('location-status');
+  if (!location) { status.textContent = 'Enter a location first.'; return; }
+  const button = $('save-location'); button.disabled = true; button.textContent = 'Saving…';
+  try {
+    const response = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Failed to save');
+    status.textContent = `Saved. Weather will be fetched for ${result.farm.location}.`;
+    const farm = await (await fetch('/api/farm')).json();
+    render(farm);
+  }
+  catch (error) { status.textContent = error.message || 'Save failed. Is KISAN_API_TOKEN set?'; }
+  finally { button.disabled = false; button.textContent = 'Save location'; }
 });
 
 async function fetchState() { try { const response = await fetch('/api/farm'); if (!response.ok) throw new Error(); render(await response.json()); setConnected(true); } catch { setConnected(false); } }
