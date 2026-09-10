@@ -143,6 +143,108 @@ Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the
 | `GET /api/climate`, `/api/alerts`, `/api/history` | Supporting local dashboard data. |
 | `POST /api/profile` | Update farm profile (requires `KISAN_API_TOKEN` if configured). |
 
+## API contract: inputs and expected behaviour
+
+Base URL: `http://<pi-ip>:3000`. All read endpoints return JSON and require no
+authentication. When `KISAN_API_TOKEN` is configured, every write endpoint
+requires this header:
+
+```http
+Authorization: Bearer <KISAN_API_TOKEN>
+```
+
+### 1. Send sensor telemetry: `POST /api/sensors`
+
+This is the main input to the system. The Arduino bridge sends one JSON record
+per reading. Missing values use safe defaults, but send all fields below for
+accurate ML outputs and weather decisions.
+
+```json
+{
+  "npk": { "n": 90, "p": 42, "k": 43 },
+  "moisture": 42,
+  "temperature": 20.9,
+  "humidity": 82,
+  "ph": 6.5,
+  "ec": 0.62,
+  "organic_carbon": 0.7,
+  "rainfall": 203,
+  "gps": { "lat": 30.900000, "lng": 75.850000 },
+  "source": "arduino-mega"
+}
+```
+
+`n`, `p`, `k`, moisture, temperature, humidity, pH, EC, organic carbon, and
+rainfall must be numeric. GPS is optional; omit it until the device has a real
+fix. A successful request returns `201` with the normalized telemetry, stores
+it in SQLite, recalculates alerts and model outputs, and broadcasts a
+`telemetry` Socket.IO event to all open dashboards.
+
+```bash
+curl -X POST http://localhost:3000/api/sensors \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <KISAN_API_TOKEN>' \
+  --data @telemetry.json
+```
+
+### 2. Scan a leaf image: `POST /api/disease`
+
+Use multipart form data with exactly one `image` file. Accepted MIME types are
+`image/jpeg`, `image/png`, and `image/webp`. Submit a close, well-lit image of
+one leaf; the ONNX model runs locally and returns `201` with `label`, readable
+`disease`, `healthy`, `confidence`, `treatment`, `top_predictions`, and
+`inference_ms`. The result is saved in `disease_scans` and immediately appears
+on the dashboard through Socket.IO.
+
+```bash
+curl -X POST http://localhost:3000/api/disease \
+  -H 'Authorization: Bearer <KISAN_API_TOKEN>' \
+  -F 'image=@/path/to/leaf.jpg'
+```
+
+`GET /api/disease` returns model readiness, humidity-derived disease risk, and
+the last saved scan. A missing image returns `400`; an unsupported file type
+returns `415`; invalid images or unavailable local inference return `422`.
+
+### 3. Update farm profile: `POST /api/profile`
+
+Send any subset of `name`, `crop`, `acreage`, and `location` as JSON. Omitted
+or `null` fields retain their existing value. `acreage` must be positive.
+`location: ""` explicitly clears the saved location. The location is used for
+OpenWeatherMap only when Arduino GPS is unavailable.
+
+```json
+{ "name": "Singh Family Farm", "crop": "Wheat", "acreage": 6.5, "location": "Ludhiana, IN" }
+```
+
+The endpoint returns `200` with `{ "ok": true, "farm": { ... } }`, clears the
+weather cache, and broadcasts the updated farm payload.
+
+### Read endpoints and their inputs
+
+| Endpoint | Input | Expected result |
+| --- | --- | --- |
+| `GET /api/farm` | None | Complete dashboard payload: profile, enriched telemetry, weather source, health, all ML results, alerts, and last disease scan. This is the first request the UI makes. |
+| `GET /api/sensors` | None | Latest raw normalized sensor reading, without remote-weather overlay. |
+| `GET /api/soil` | None | Current NPK, pH, EC, organic carbon, soil-health score, and the soil-fertility model result. |
+| `GET /api/climate` | None | Current temperature, humidity, risk, and whether data came from local sensors or OpenWeatherMap. |
+| `GET /api/recommendations` | None | Farmer-facing action plus the crop model's top three ranked crops and active alerts. |
+| `GET /api/alerts` | None | Alerts derived from the current enriched telemetry. |
+| `GET /api/history` | None | Up to 30 stored telemetry records, oldest to newest. |
+| `GET /api/health` | None | Service status, uptime, readiness of all models, sensor freshness, and SQLite health. Use this for deployment monitoring. |
+
+### End-to-end data flow
+
+1. Arduino emits one line of telemetry JSON; `serial_bridge.py` forwards it to
+   `POST /api/sensors`.
+2. Flask normalizes and persists the reading, optionally overlays live weather,
+   and produces alerts, crop recommendations, and soil fertility results.
+3. Flask emits one Socket.IO `telemetry` message. The browser refreshes all
+   dashboard cards without a full page reload.
+4. A farmer may upload a leaf image; `POST /api/disease` runs the local ONNX
+   model in the single scan worker, stores the result, and broadcasts the new
+   dashboard state.
+
 SQLite state is created under `runtime/kisan_mitra.db`. Detailed source, licensing, and validation notes are in [MODEL_SOURCES.md](MODEL_SOURCES.md).
 
 ## Production notes
