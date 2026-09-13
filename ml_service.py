@@ -14,8 +14,30 @@ from PIL import Image, UnidentifiedImageError
 ROOT = Path(__file__).resolve().parent
 MODEL_DIR = ROOT / "models"
 DISEASE_MODEL = MODEL_DIR / "plant_disease.onnx"
+DISEASE_CALIBRATION = MODEL_DIR / "plant_disease_centroids.npz"
 CROP_MODEL = MODEL_DIR / "crop_recommendation.joblib"
 SOIL_MODEL = MODEL_DIR / "soil_fertility.joblib"
+
+# The PlantVillage model is a closed-set classifier: it always emits a full
+# softmax, so blank or out-of-distribution images get forced onto one of its 15
+# classes (blank images scored 99% "Tomato_Late_blight"). The OOD gate rejects
+# such inputs before a diagnosis is reported. It has three parts:
+#   1. A size floor: icon-sized uploads (measured: a 32 x 32 downscale of a
+#      known leaf scored 99.97% for the WRONG class -- the upscale creates a
+#      smooth blob that slips past the other checks). Real photos down to
+#      ~64 px still diagnose correctly, so the floor only blocks icons.
+#   2. A content check: a real leaf photo has meaningful pixel variation.
+#   3. A feature-space check: the image must sit inside the distance envelope
+#      (built by train_disease_ood.py) of the class the model actually predicts
+#      AND win by a clear softmax margin. Close-up real-world photos can sit
+#      inside a class envelope yet be ambiguous (a field pepper photo scored
+#      75% "Tomato_Early_blight" with a 24% runner-up); saturated in-distribution
+#      softmaxes have a near-100-point margin.
+MIN_IMAGE_DIM = 64
+MIN_IMAGE_STD = 8.0
+# Fallback when the calibration file predates margin calibration; the calibrated
+# value in plant_disease_centroids.npz governs when present.
+MIN_SOFTMAX_MARGIN = 0.80
 
 # Verified against the class-directory ordering of the PlantVillage subset used
 # by the downloaded 15-class EfficientNetV2 ONNX model.
@@ -44,11 +66,16 @@ TREATMENTS = {
 class MLService:
     def __init__(self) -> None:
         self._disease_session: ort.InferenceSession | None = None
+        self._disease_ood: dict[str, Any] | None = None
         self._crop_model: Any = None
         self._soil_model: Any = None
 
     def disease_ready(self) -> bool:
         return DISEASE_MODEL.exists()
+
+    def disease_ood_ready(self) -> bool:
+        """Whether the OOD rejection calibration is installed with the model."""
+        return bool(self._disease_calibration())
 
     def crop_ready(self) -> bool:
         return CROP_MODEL.exists()
@@ -59,7 +86,7 @@ class MLService:
     def model_status(self) -> dict[str, dict[str, Any]]:
         """Report whether each model artefact is present, for the health endpoint."""
         return {
-            "disease": {"ready": self.disease_ready(), "file": DISEASE_MODEL.name},
+            "disease": {"ready": self.disease_ready(), "file": DISEASE_MODEL.name, "ood": self.disease_ood_ready()},
             "crop": {"ready": self.crop_ready(), "file": CROP_MODEL.name},
             "soil": {"ready": self.soil_ready(), "file": SOIL_MODEL.name},
         }
@@ -68,6 +95,21 @@ class MLService:
         if self._disease_session is None:
             self._disease_session = ort.InferenceSession(str(DISEASE_MODEL), providers=["CPUExecutionProvider"])
         return self._disease_session
+
+    def _disease_calibration(self) -> dict[str, Any]:
+        """Lazily load the OOD calibration (centroids + per-class thresholds)."""
+        if self._disease_ood is None:
+            if DISEASE_CALIBRATION.exists():
+                with np.load(DISEASE_CALIBRATION) as data:
+                    self._disease_ood = {
+                        "centroids": data["centroids"],
+                        "thresholds": data["thresholds"],
+                        "feature_output": str(data["feature_output"]),
+                        "margin_threshold": float(data["margin_threshold"]) if "margin_threshold" in data else None,
+                    }
+            else:
+                self._disease_ood = {}
+        return self._disease_ood
 
     def _crop(self) -> Any:
         if self._crop_model is None:
@@ -79,19 +121,79 @@ class MLService:
             self._soil_model = joblib.load(SOIL_MODEL)
         return self._soil_model
 
+    def _unknown_result(self, scores: np.ndarray, inference_ms: float) -> dict[str, Any]:
+        """Honest response when the scan is not one of the 15 trained classes."""
+        top = np.argsort(scores)[-3:][::-1]
+        return {
+            "label": "Unknown",
+            "disease": "Not recognized",
+            "healthy": False,
+            "recognized": False,
+            "confidence": round(float(scores[top[0]]) * 100, 2),
+            "treatment": (
+                "This image doesn't match any of the 15 pepper, potato, or tomato "
+                "leaf classes this offline model was trained on, or it is too "
+                "blurry/uniform to read. Retake a clear, close-up photo of one "
+                "leaf against a plain background before treating anything."
+            ),
+            "inference_ms": inference_ms,
+            "top_predictions": [{"label": DISEASE_LABELS[int(i)], "confidence": round(float(scores[int(i)]) * 100, 2)} for i in top],
+        }
+
     def diagnose(self, image_bytes: bytes) -> dict[str, Any]:
         if not self.disease_ready():
             raise RuntimeError("Disease model is not installed")
         try:
-            image = Image.open(BytesIO(image_bytes)).convert("RGB").resize((224, 224))
+            loaded = Image.open(BytesIO(image_bytes))
+            if min(loaded.size) < MIN_IMAGE_DIM:
+                raise ValueError(
+                    f"Image is only {loaded.size[0]}x{loaded.size[1]}, which is too small to "
+                    f"diagnose reliably; use a leaf photo at least {MIN_IMAGE_DIM}x{MIN_IMAGE_DIM} pixels"
+                )
+            image = loaded.convert("RGB").resize((224, 224))
         except (UnidentifiedImageError, OSError) as error:
             raise ValueError("Upload a valid JPG, PNG, or WEBP leaf image") from error
-        pixels = np.asarray(image, dtype=np.float32)[None, ...]  # Model expects 0-255 RGB pixels.
+        pixels = np.asarray(image, dtype=np.float32)  # Model expects 0-255 RGB pixels.
         session = self._disease()
+        calibration = self._disease_calibration()
         start = time.perf_counter()
-        scores = session.run(None, {session.get_inputs()[0].name: pixels})[0][0]
+        outputs = [session.get_outputs()[0].name]
+        feature_output = calibration.get("feature_output") if calibration else None
+        if feature_output and any(output.name == feature_output for output in session.get_outputs()):
+            outputs.append(feature_output)
+        results = session.run(outputs, {session.get_inputs()[0].name: pixels[None, ...]})
         inference_ms = round((time.perf_counter() - start) * 1000, 1)
+        scores = results[0][0]
+
+        # OOD gate, part 1: a real leaf photo has meaningful pixel variation;
+        # blank and near-uniform uploads are rejected before any softmax read.
+        if float(pixels.std()) < MIN_IMAGE_STD:
+            return self._unknown_result(scores, inference_ms)
+
         index = int(np.argmax(scores))
+
+        # OOD gate, part 2: the image must sit inside the distance envelope of
+        # the class the model predicts (see train_disease_ood.py). Softmax
+        # confidence alone is useless out-of-distribution -- blank images score
+        # 99% -- but penultimate-feature distance separates them reliably.
+        if len(results) > 1:
+            feature = results[1][0]
+            unit = feature / (np.linalg.norm(feature) + 1e-12)
+            distance = 1.0 - float(unit @ calibration["centroids"][index])
+            if distance > float(calibration["thresholds"][index]):
+                return self._unknown_result(scores, inference_ms)
+
+        # OOD gate, part 3: a photo can sit inside a class envelope yet be
+        # ambiguous -- a real-world pepper photo passed the distance check at
+        # 75% "Tomato_Early_blight" with a 24% runner-up. In-distribution
+        # PlantVillage scans have a near-saturated softmax, so require a clear
+        # winning margin as well.
+        ordered = np.sort(scores)[::-1]
+        margin = float(ordered[0] - ordered[1])
+        margin_limit = (calibration or {}).get("margin_threshold") or MIN_SOFTMAX_MARGIN
+        if margin < margin_limit:
+            return self._unknown_result(scores, inference_ms)
+
         label = DISEASE_LABELS[index]
         confidence = float(scores[index])
         healthy = "healthy" in label.lower()
@@ -103,7 +205,8 @@ class MLService:
         top = np.argsort(scores)[-3:][::-1]
         return {
             "label": label, "disease": disease,
-            "healthy": healthy, "confidence": round(confidence * 100, 2),
+            "healthy": healthy, "recognized": True,
+            "confidence": round(confidence * 100, 2),
             "treatment": treatment, "inference_ms": inference_ms,
             "top_predictions": [{"label": DISEASE_LABELS[int(i)], "confidence": round(float(scores[int(i)]) * 100, 2)} for i in top],
         }

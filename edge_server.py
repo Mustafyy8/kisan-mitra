@@ -8,6 +8,7 @@ with no internet connection.
 from __future__ import annotations
 
 import json
+import math
 import os
 import secrets
 import sqlite3
@@ -56,6 +57,9 @@ _weather_cache: dict[str, Any] = {}
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 app.config["SECRET_KEY"] = secret_key
+# Leaf scans are resized before inference; accepting very large uploads only
+# wastes memory on a small edge device. Flask rejects larger bodies with 413.
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 # The dashboard is served from this same origin, so no cross-origin access is needed.
 socketio = SocketIO(app, async_mode="threading")
 state_lock = threading.Lock()
@@ -72,6 +76,22 @@ START_TIME = time.monotonic()
 SENSOR_FRESH_SECONDS = 300
 SENSOR_STALE_SECONDS = 1800
 
+
+@app.errorhandler(413)
+def upload_too_large(_error: Exception) -> tuple[Response, int]:
+    return jsonify({"error": "Image upload must be 10 MB or smaller"}), 413
+
+
+@app.after_request
+def add_response_headers(response: Response) -> Response:
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 DEFAULT_TELEMETRY = {
     "npk": {"n": 35.0, "p": 21.0, "k": 48.0},
     "moisture": 42.0,
@@ -86,6 +106,16 @@ DEFAULT_TELEMETRY = {
     "gps": {"lat": 0.0, "lng": 0.0},
     "source": "demo",
     "updated_at": None,
+}
+
+TELEMETRY_LIMITS = {
+    "moisture": (0.0, 100.0),
+    "temperature": (-50.0, 80.0),
+    "humidity": (0.0, 100.0),
+    "ph": (0.0, 14.0),
+    "ec": (0.0, 100.0),
+    "organic_carbon": (0.0, 100.0),
+    "rainfall": (0.0, 10_000.0),
 }
 
 
@@ -265,12 +295,18 @@ def soil_assessment_for(data: dict[str, Any]) -> dict[str, Any]:
     return ml.assess_soil_fertility({"n": data["npk"]["n"], "p": data["npk"]["p"], "k": data["npk"]["k"], "ph": data["ph"], "ec": data["ec"], "organic_carbon": data["organic_carbon"]})
 
 
-def recommendation_for(data: dict[str, Any]) -> dict[str, str]:
-    recommendations = ml.recommend_crops({
+def crop_recommendations_for(data: dict[str, Any]) -> list[dict[str, Any]]:
+    return ml.recommend_crops({
         "n": data["npk"]["n"], "p": data["npk"]["p"], "k": data["npk"]["k"],
         "temperature": data["temperature"], "humidity": data["humidity"], "ph": data["ph"],
         "rainfall": data["rainfall"],
     })
+
+
+def recommendation_for(
+    data: dict[str, Any], recommendations: list[dict[str, Any]] | None = None
+) -> dict[str, str]:
+    recommendations = recommendations if recommendations is not None else crop_recommendations_for(data)
     if recommendations:
         best = recommendations[0]
         return {"title": f"Consider {best['crop']}", "message": f"The local crop model ranks {best['crop']} at {best['confidence']}% suitability for the current soil and climate inputs."}
@@ -289,8 +325,18 @@ def normalise_telemetry(payload: dict[str, Any]) -> dict[str, Any]:
     data["gps"] = {**DEFAULT_TELEMETRY["gps"], **(payload.get("gps") or {})}
     for key in ("moisture", "temperature", "humidity", "ph", "ec", "organic_carbon", "rainfall"):
         data[key] = float(data[key])
+        low, high = TELEMETRY_LIMITS[key]
+        if not math.isfinite(data[key]) or not low <= data[key] <= high:
+            raise ValueError(f"{key} must be between {low:g} and {high:g}")
     for key in ("n", "p", "k"):
         data["npk"][key] = float(data["npk"][key])
+        if not math.isfinite(data["npk"][key]) or not 0 <= data["npk"][key] <= 10_000:
+            raise ValueError(f"npk.{key} must be between 0 and 10000")
+    for key, bounds in (("lat", (-90.0, 90.0)), ("lng", (-180.0, 180.0))):
+        data["gps"][key] = float(data["gps"][key])
+        if not math.isfinite(data["gps"][key]) or not bounds[0] <= data["gps"][key] <= bounds[1]:
+            raise ValueError(f"gps.{key} is outside its valid range")
+    data["source"] = str(data.get("source") or "unknown")[:80]
     data["updated_at"] = now()
     return data
 
@@ -314,6 +360,7 @@ def save_telemetry(data: dict[str, Any]) -> None:
 
 def dashboard_payload() -> dict[str, Any]:
     telemetry = current_telemetry()
+    crops = crop_recommendations_for(telemetry)
     with closing(db()) as connection:
         scan = connection.execute("SELECT result FROM disease_scans ORDER BY id DESC LIMIT 1").fetchone()
     latest_scan = json.loads(scan["result"]) if scan else None
@@ -323,7 +370,8 @@ def dashboard_payload() -> dict[str, Any]:
         "health": health_for(telemetry),
         "soil_assessment": soil_assessment_for(telemetry),
         "alerts": alerts_for(telemetry),
-        "recommendation": recommendation_for(telemetry),
+        "recommendation": recommendation_for(telemetry, crops),
+        "crops": crops,
         "disease": latest_scan,
         "edge": {"online": True, "model": "PlantVillage EfficientNetV2",
                  "inference_ms": latest_scan["inference_ms"] if latest_scan else None,
@@ -392,7 +440,9 @@ def health() -> Response:
 
 @app.get("/api/sensors")
 def sensors() -> Response:
-    return jsonify(latest_telemetry)
+    with state_lock:
+        snapshot = json.loads(json.dumps(latest_telemetry))
+    return jsonify(snapshot)
 
 
 def require_token() -> Response | None:
@@ -414,15 +464,16 @@ def ingest_sensors() -> Response:
         return jsonify({"error": "JSON telemetry payload required"}), 400
     try:
         data = normalise_telemetry(payload)
-    except (TypeError, ValueError, KeyError):
-        return jsonify({"error": "Telemetry must include numeric npk, moisture, temperature, humidity and ph values"}), 422
+    except (TypeError, ValueError, KeyError) as error:
+        return jsonify({"error": f"Invalid telemetry: {error}"}), 422
     save_telemetry(data)
     return jsonify({"ok": True, "telemetry": data}), 201
 
 
 @app.get("/api/soil")
 def soil() -> Response:
-    data = latest_telemetry
+    with state_lock:
+        data = json.loads(json.dumps(latest_telemetry))
     fertility = soil_assessment_for(data)
     return jsonify({"npk": data["npk"], "moisture": data["moisture"], "ph": data["ph"], "ec": data["ec"], "organic_carbon": data["organic_carbon"], "fertility": fertility, "health": health_for(data)["soil"]})
 
@@ -477,8 +528,8 @@ def alerts() -> Response:
 @app.get("/api/recommendations")
 def recommendations() -> Response:
     data = current_telemetry()
-    crops = ml.recommend_crops({"n": data["npk"]["n"], "p": data["npk"]["p"], "k": data["npk"]["k"], "temperature": data["temperature"], "humidity": data["humidity"], "ph": data["ph"], "rainfall": data["rainfall"]})
-    return jsonify({"recommendation": recommendation_for(data), "crops": crops, "alerts": alerts_for(data)})
+    crops = crop_recommendations_for(data)
+    return jsonify({"recommendation": recommendation_for(data, crops), "crops": crops, "alerts": alerts_for(data)})
 
 
 @app.get("/api/history")
@@ -512,6 +563,8 @@ def update_profile() -> Response:
     location = current.get("location", "")
     if payload.get("location") is not None:
         location = str(payload["location"]).strip()
+    if len(name) > 120 or len(crop) > 120 or len(location) > 200:
+        return jsonify({"error": "name and crop must be 120 characters or fewer; location must be 200 or fewer"}), 422
     with closing(db()) as connection:
         connection.execute(
             "UPDATE farm_profile SET name = ?, crop = ?, acreage = ?, location = ? WHERE id = 1",

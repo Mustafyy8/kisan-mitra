@@ -108,7 +108,7 @@ All three expected ML capabilities are implemented in the same `MLService` inter
 
 | Model | Task | Strongest use | Do not use it for | Key trade-off | Choose it when |
 | --- | --- | --- | --- | --- | --- |
-| **PlantVillage EfficientNetV2** (`plant_disease.onnx`) | 15-class image classification | Clear, close-up leaf photos of pepper, potato, and tomato diseases represented in PlantVillage; returns diagnosis, confidence, and top 3 classes. | Whole-field photos, poor lighting, blurry/occluded leaves, crops outside its 15 labels, or definitive pesticide decisions. It has not been validated on field images here. | About 23 MB on disk; ONNX Runtime is fast and offline but image inference is heavier than tabular models. The source reports 97% validation accuracy, not a field-deployment guarantee. | You have a single, well-lit leaf image and need rapid local triage. |
+| **Field-fine-tuned EfficientNetV2B0** (`plant_disease.onnx`, trained on PlantVillage + PlantDoc) | 15-class image classification with an out-of-distribution rejection gate | Real-world leaf photos of pepper, potato, and tomato diseases (65.7% on field photos, 94.3% on studio-style scans); returns diagnosis, confidence, and top 3 classes. Scans the model cannot place — other crops, blanks, ambiguous shots — return `"Not recognized"` instead of a made-up tomato diagnosis. | Crops outside its 15 labels, whole-field photos, or definitive pesticide decisions. | About 16 MB on disk; ONNX Runtime is fast and offline but image inference is heavier than tabular models. ~91% of known-class scans pass the gate (size, blank, feature-distance, and softmax-margin checks); the rest are honestly flagged as unrecognized. | You have a leaf photo of a supported crop and need rapid local triage. |
 | **Crop Recommendation Random Forest** (`crop_recommendation.joblib`) | 22-class tabular crop suitability ranking | Ranking candidate crops from N, P, K, temperature, humidity, pH, and rainfall. It performed **99.32% held-out accuracy** using the fixed stratified split in `train_crop_model.py`. | Yield forecasting, market/profit prediction, variety selection, irrigation scheduling, or recommendations without meaningful rainfall/soil readings. It is trained on a compact benchmark dataset, not local farm history. | About 14 MB; extremely fast CPU inference and interpretable feature inputs, but classification confidence is not guaranteed field suitability. | Choosing crop candidates from a current soil-and-climate reading. |
 | **Soil Fertility Random Forest** (`soil_fertility.joblib`) | 3-class tabular fertility classification | Classifying **Less fertile / Fertile / Highly fertile** from N, P, K, pH, EC, and organic carbon; it reached **94.19% held-out accuracy** in `train_soil_model.py`. | Soil texture/taxonomy, micronutrient deficiencies, fertilizer dosage, salinity diagnosis without reliable EC, or decisions outside the source dataset's geography and lab methods. | About 6.2 MB and fast on CPU; it uses six available sensor/lab inputs, so it is practical but less complete than a broad lab panel. | You have calibrated NPK, pH, EC, and organic-carbon measurements and need a broad fertility screening. |
 
@@ -190,11 +190,15 @@ curl -X POST http://localhost:3000/api/sensors \
 ### 2. Scan a leaf image: `POST /api/disease`
 
 Use multipart form data with exactly one `image` file. Accepted MIME types are
-`image/jpeg`, `image/png`, and `image/webp`. Submit a close, well-lit image of
+`image/jpeg`, `image/png`, and `image/webp`, up to 10 MB. Submit a close, well-lit image of
 one leaf; the ONNX model runs locally and returns `201` with `label`, readable
 `disease`, `healthy`, `confidence`, `treatment`, `top_predictions`, and
-`inference_ms`. The result is saved in `disease_scans` and immediately appears
-on the dashboard through Socket.IO.
+`inference_ms`, plus `recognized`. When the scan is not one of the 15 trained
+classes (for example a real-world photo, a blank upload, or another crop), the
+response is `{"label": "Unknown", "disease": "Not recognized",
+"recognized": false, ...}` instead of a confident false tomato diagnosis. The
+result is saved in `disease_scans` and immediately appears on the dashboard
+through Socket.IO.
 
 ```bash
 curl -X POST http://localhost:3000/api/disease \
@@ -224,7 +228,7 @@ weather cache, and broadcasts the updated farm payload.
 
 | Endpoint | Input | Expected result |
 | --- | --- | --- |
-| `GET /api/farm` | None | Complete dashboard payload: profile, enriched telemetry, weather source, health, all ML results, alerts, and last disease scan. This is the first request the UI makes. |
+| `GET /api/farm` | None | Complete dashboard payload: profile, enriched telemetry, weather source, health, crop rankings, soil assessment, alerts, and last disease scan. This is the first request the UI makes. |
 | `GET /api/sensors` | None | Latest raw normalized sensor reading, without remote-weather overlay. |
 | `GET /api/soil` | None | Current NPK, pH, EC, organic carbon, soil-health score, and the soil-fertility model result. |
 | `GET /api/climate` | None | Current temperature, humidity, risk, and whether data came from local sensors or OpenWeatherMap. |
@@ -249,9 +253,10 @@ SQLite state is created under `runtime/kisan_mitra.db`. Detailed source, licensi
 
 ## Production notes
 
+- **Leaf scans outside the 15 trained classes are rejected, not guessed.** The model is a closed-set classifier, so without a guard it reports a tomato disease for almost any image (a blank white image scored 99% `Tomato_Late_blight`). `MLService.diagnose` now rejects scans whose penultimate-layer features fall outside the envelope of the predicted class (calibrated by `python train_disease_ood.py`; see [MODEL_SOURCES.md](MODEL_SOURCES.md)); `/api/health` reports the gate's readiness under `models.disease.ood`. The model itself only knows pepper, potato, and tomato — supported-crop options and a swap procedure are documented in [MODEL_SOURCES.md](MODEL_SOURCES.md).
 - **Use 64-bit Raspberry Pi OS (aarch64).** `onnxruntime` no longer publishes wheels for 32-bit ARM (armv7l), so `pip install -r requirements.txt` fails on 32-bit Pi OS. On a Pi 4 expect roughly **1-3 seconds per leaf scan** with the EfficientNetV2 model; scans are queued through a single background worker so the dashboard stays responsive. The Random Forest models are effectively instant.
 - **Set `KISAN_SECRET_KEY`** (any long random string). Without it the server falls back to a random per-boot key and warns on startup.
-- **Set `KISAN_API_TOKEN` to protect write endpoints.** When set, `POST /api/sensors`, `POST /api/disease`, and `POST /api/profile` require an `Authorization: Bearer <token>` header. The read-only dashboard is intentionally open so farm staff can view it without credentials.
-- **Optional live weather (offline-safe):** set `OPENWEATHER_API_KEY` in `.env` to enrich the dashboard with current temperature/humidity/rainfall from OpenWeatherMap. The weather location is resolved in this order: **GPS coordinates from the Arduino's telemetry, then the farm location saved on the dashboard** (Advanced view -> Farm location), then `OPENWEATHER_CITY` as the fallback. Fetches are cached for 30 minutes and time out after 3 seconds; if the request fails for any reason (offline, revoked key, rate limit) the app silently falls back to the local sensor readings, so the farm keeps working with no internet at all. The dashboard footer shows which source and city the climate values came from.
+- **Set `KISAN_API_TOKEN` to protect write endpoints.** When set, `POST /api/sensors`, `POST /api/disease`, and `POST /api/profile` require an `Authorization: Bearer <token>` header. The read-only dashboard is intentionally open so farm staff can view it without credentials. To scan or change the location from the dashboard, enter the token under **System -> Write access**; it is kept only in that browser tab's session storage.
+- **Optional live weather (offline-safe):** set `OPENWEATHER_API_KEY` in `.env` to enrich the dashboard with current temperature/humidity/rainfall from OpenWeatherMap. The weather location is resolved in this order: **GPS coordinates from the Arduino's telemetry, then the farm location saved on the dashboard** (System -> Farm location), then `OPENWEATHER_CITY` as the fallback. Fetches are cached for 30 minutes and time out after 3 seconds; if the request fails for any reason (offline, revoked key, rate limit) the app silently falls back to the local sensor readings, so the farm keeps working with no internet at all. The dashboard connection area shows the active source and city.
 - The legacy Streamlit application and its committed third-party API keys (Roboflow, OpenWeatherMap, Google Gemini) were removed in this branch. If you ever used those keys, **revoke/rotate them** in the provider consoles; they are no longer referenced anywhere in the codebase.
 - Sensor and scan history is stored in `runtime/kisan_mitra.db` (auto-created, git-ignored). The dashboard shows clearly labelled demo telemetry until real readings arrive.
