@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#18352b">
+  <meta name="description" content="Kisan Mitra — local farm intelligence that works offline.">
+  <title>Kisan Mitra</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%2327734b'/%3E%3Cpath d='M20 9c-5 3.5-7 7.6-7 11.2 0 4.2 3.1 7 7 7s7-2.8 7-7C27 16.6 25 12.5 20 9Z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand" aria-label="Kisan Mitra home">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="currentColor"/><path d="M20 9c-5 3.5-7 7.6-7 11.2 0 4.2 3.1 7 7 7s7-2.8 7-7C27 16.6 25 12.5 20 9Z" fill="#fff"/><path d="M20 14v10m0-5.6-3.2-2.2m3.2 5 3.5-2.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Kisan Mitra<small data-i18n="brand_tag">Local farm intelligence</small></span>
+      </div>
+      <nav class="nav" aria-label="Main navigation" role="tablist">
+        <button class="nav-item is-active" id="tab-overview" data-tab="overview" type="button" role="tab" aria-selected="true" aria-controls="page-overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><span data-i18n="nav_overview">Overview</span></button>
+        <button class="nav-item" id="tab-field" data-tab="field" type="button" role="tab" aria-selected="false" aria-controls="page-field" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 3.5C13 3.7 7.8 6 5.4 10.1c-1.7 2.9-1.3 6 .7 7.7L3.8 20a1 1 0 0 0 1.4 1.4l2.3-2.3c1.9 1 4.3.8 6.5-.5 4.3-2.5 6.5-7.7 6.5-14.1a1 1 0 0 0-1-1Zm-7 13.4c-1.2.7-2.4.9-3.4.6l6.6-6.6a1 1 0 0 0-1.4-1.4l-6.7 6.7c-.8-1.2-.8-3.1.1-5 1.8-3 5.7-4.9 10.7-5.5-.3 5.1-2.3 9.2-5.9 11.2Z"/></svg><span data-i18n="nav_field">Field tools</span></button>
+        <button class="nav-item" id="tab-system" data-tab="system" type="button" role="tab" aria-selected="false" aria-controls="page-system" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L15 3.5h-4L10.7 6A8 8 0 0 0 9 7L6.6 6l-2 3.5 2 1.5a7.8 7.8 0 0 0 0 2l-2 1.5 2 3.5L9 17a8 8 0 0 0 1.7 1l.3 2.5h4l.3-2.5a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg><span data-i18n="nav_system">System</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="connection" id="connection" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span><b id="connectionText">Connecting</b><small id="sourceText">Checking edge server…</small></span></div>
+        <div class="language" role="group" aria-label="Language"><button id="langEn" class="is-active" type="button" aria-pressed="true">English</button><button id="langHi" type="button" aria-pressed="false">हिंदी</button></div>
+      </div>
+    </aside>
+
+    <main id="mainContent" tabindex="-1">
+      <div class="offline-banner" id="offlineBanner" role="alert" hidden><span data-i18n="offline_message">Live updates are unavailable. Showing the last reading.</span><button id="retryBtn" type="button" data-i18n="retry">Retry</button></div>
+      <section class="page is-active" id="page-overview" role="tabpanel" aria-labelledby="tab-overview">
+        <header class="page-header">
+          <div><p class="overline" id="dateLine">Today</p><h1 id="farmName">Kisan Mitra Farm</h1><p class="farm-meta" id="farmMeta">Loading field details…</p></div>
+          <div class="health-score" aria-label="Overall field health"><span data-i18n="field_health">Field health</span><strong id="healthScore">—</strong><small>/100</small><div class="health-track" aria-hidden="true"><i id="healthBar"></i></div></div>
+        </header>
+        <article class="priority" id="priorityCard"><div class="priority-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a1 1 0 0 1 1 1v1.1a8 8 0 1 1-6.5 2.5l-.8-.8a1 1 0 0 1 1.4-1.4l2.3 2.3a1 1 0 0 1 0 1.4l-2.3 2.3A1 1 0 1 1 5.7 9l.8-.8A6 6 0 1 0 12 6.1V7a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1h1Z"/></svg></div><div><p data-i18n="priority">Priority</p><h2 id="recommendationTitle">Reviewing the latest reading</h2><span id="recommendationMessage">Your next action will appear here.</span></div></article>
+        <div class="metric-grid" aria-label="Latest field readings">
+          <article class="metric"><div class="metric-label"><span class="metric-icon water" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Zm0 17a4 4 0 0 1-4-4c0-2.3 2.4-6.2 4-8.4 1.6 2.2 4 6.1 4 8.4a4 4 0 0 1-4 4Z"/></svg></span><span data-i18n="soil_moisture">Soil moisture</span></div><strong id="moistureValue">—</strong><span class="metric-note" id="moistureNote">Optimal 45–65%</span></article>
+          <article class="metric"><div class="metric-label"><span class="metric-icon heat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 13.8V5a5 5 0 0 0-10 0v8.8A6 6 0 1 0 15 13.8ZM10 21a4 4 0 0 1-3-6.7V5a3 3 0 0 1 6 0v9.3A4 4 0 0 1 10 21Zm1-10.8V5a1 1 0 0 0-2 0v5.2a3 3 0 1 0 2 0Z"/></svg></span><span data-i18n="temperature">Temperature</span></div><strong id="temperatureValue">—</strong><span class="metric-note" id="temperatureNote">Field sensor</span></article>
+          <article class="metric"><div class="metric-label"><span class="metric-icon air" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h10a2 2 0 1 0-2-2 1 1 0 0 1-2 0 4 4 0 1 1 4 4H4a1 1 0 0 1 0-2Zm16 4a4 4 0 0 1-4 4H4a1 1 0 0 1 0-2h12a2 2 0 1 0-2-2 1 1 0 0 1-2 0 4 4 0 0 1 8 0Z"/></svg></span><span data-i18n="humidity">Humidity</span></div><strong id="humidityValue">—</strong><span class="metric-note" id="humidityNote">Checking conditions</span></article>
+          <article class="metric"><div class="metric-label"><span class="metric-icon soil" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2Zm-2 6h20v3H2v-3Zm0 5h20v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3Z"/></svg></span><span data-i18n="soil_ph">Soil pH</span></div><strong id="phValue">—</strong><span class="metric-note" data-i18n="ph_note">Optimal 6.0–7.0</span></article>
+        </div>
+        <div class="overview-grid">
+          <section class="panel health-panel" aria-labelledby="conditionsTitle"><div class="section-row"><h2 id="conditionsTitle" data-i18n="conditions">Conditions</h2><span class="updated" id="updatedAt">Waiting for data</span></div><div class="condition-list"><div><span data-i18n="soil">Soil</span><div class="bar"><i id="soilHealthBar"></i></div><b id="soilHealth">—</b></div><div><span data-i18n="water">Water</span><div class="bar"><i id="waterHealthBar"></i></div><b id="waterHealth">—</b></div><div><span data-i18n="climate">Climate</span><div class="bar"><i id="climateHealthBar"></i></div><b id="climateHealth">—</b></div><div><span data-i18n="disease_risk">Leaf health</span><div class="bar"><i id="diseaseHealthBar"></i></div><b id="diseaseHealth">—</b></div></div></section>
+          <section class="panel" aria-labelledby="noticesTitle"><div class="section-row"><h2 id="noticesTitle" data-i18n="notices">Notices</h2><span class="count" id="noticeCount">0</span></div><div class="notice-list" id="noticeList"><p class="empty">No notices yet.</p></div></section>
+        </div>
+      </section>
+
+      <section class="page" id="page-field" role="tabpanel" aria-labelledby="tab-field" hidden>
+        <header class="page-header compact"><div><p class="overline" data-i18n="field_tools">Field tools</p><h1 data-i18n="soil_and_leaf">Soil &amp; leaf</h1></div><p data-i18n="field_intro">Turn sensor readings and one clear leaf photo into practical guidance.</p></header>
+        <div class="field-grid"><div class="field-column">
+          <section class="panel soil-panel" aria-labelledby="soilTitle"><div class="section-row"><h2 id="soilTitle" data-i18n="soil_nutrients">Soil nutrients</h2><span class="status-chip" id="fertilityStatus">Checking</span></div><div class="nutrients"><div><span><b>N</b><small data-i18n="nitrogen">Nitrogen</small></span><strong id="nValue">—</strong><div class="bar"><i id="nBar"></i></div></div><div><span><b>P</b><small data-i18n="phosphorus">Phosphorus</small></span><strong id="pValue">—</strong><div class="bar"><i id="pBar"></i></div></div><div><span><b>K</b><small data-i18n="potassium">Potassium</small></span><strong id="kValue">—</strong><div class="bar"><i id="kBar"></i></div></div></div><dl class="soil-facts"><div><dt data-i18n="ec">Electrical conductivity</dt><dd id="ecValue">—</dd></div><div><dt data-i18n="organic_carbon">Organic carbon</dt><dd id="carbonValue">—</dd></div><div><dt data-i18n="rainfall">Rainfall</dt><dd id="rainfallValue">—</dd></div></dl></section>
+          <section class="panel" aria-labelledby="cropTitle"><div class="section-row"><h2 id="cropTitle" data-i18n="crop_matches">Crop matches</h2><span class="muted-label" data-i18n="top_three">Top 3</span></div><ol class="crop-list" id="cropList"><li><span>Loading recommendations…</span></li></ol><p class="panel-footnote" data-i18n="crop_disclaimer">Use these rankings as a starting point alongside local agronomic advice.</p></section>
+        </div>
+          <section class="panel scanner" aria-labelledby="scannerTitle"><div class="scanner-heading"><span class="scanner-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h5v2H5v4H3V4a1 1 0 0 1 1-1Zm11 0h5a1 1 0 0 1 1 1v5h-2V5h-4V3Zm4 12h2v5a1 1 0 0 1-1 1h-5v-2h4v-4ZM5 15v4h4v2H4a1 1 0 0 1-1-1v-5h2Zm7-8c-3.2 2.2-4.5 4.7-4.5 7 0 2.7 2 4.5 4.5 4.5s4.5-1.8 4.5-4.5c0-2.3-1.3-4.8-4.5-7Z"/></svg></span><div><h2 id="scannerTitle" data-i18n="leaf_scanner">Leaf scanner</h2><p data-i18n="scanner_help">Pepper, potato, and tomato. One leaf, close up, in daylight.</p></div></div>
+            <label class="upload" for="leafInput" id="dropZone"><img id="leafPreview" alt="Selected leaf preview" hidden><span class="upload-placeholder" id="uploadPlaceholder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16V7.8L8.4 10.4 7 9l5-5 5 5-1.4 1.4L13 7.8V16h-2Zm-5 4a3 3 0 0 1-3-3v-3h2v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3h2v3a3 3 0 0 1-3 3H6Z"/></svg><b data-i18n="choose_photo">Choose a leaf photo</b><small data-i18n="photo_types">JPG, PNG, or WEBP · up to 10 MB</small></span></label>
+            <input class="visually-hidden" id="leafInput" type="file" accept="image/jpeg,image/png,image/webp"><div class="file-row" id="fileRow" hidden><span id="fileName"></span><button id="clearPhotoBtn" type="button" data-i18n="remove">Remove</button></div><button class="primary-button" id="scanBtn" type="button" disabled><span data-i18n="scan_leaf">Scan leaf</span></button>
+            <div class="scan-result" id="scanResult" role="status" aria-live="polite" hidden><div class="result-top"><span class="result-icon" id="resultIcon" aria-hidden="true"></span><div><small data-i18n="scan_result">Scan result</small><strong id="resultTitle"></strong></div><span class="confidence" id="resultConfidence"></span></div><p id="resultTreatment"></p><div class="result-meta"><span id="resultSpeed"></span><span data-i18n="local_private">Processed locally · photo not stored</span></div></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="page" id="page-system" role="tabpanel" aria-labelledby="tab-system" hidden>
+        <header class="page-header compact"><div><p class="overline" data-i18n="system">System</p><h1 data-i18n="device_status">Device status</h1></div><p data-i18n="system_intro">Connection, local models, and farm settings for setup and support.</p></header>
+        <div class="system-grid">
+          <section class="panel" aria-labelledby="modelTitle"><div class="section-row"><h2 id="modelTitle" data-i18n="edge_models">Edge models</h2><span class="status-chip success" data-i18n="local">Local</span></div><dl class="details"><div><dt data-i18n="disease_model">Disease model</dt><dd id="modelName">—</dd></div><div><dt data-i18n="last_inference">Last inference</dt><dd id="modelSpeed">—</dd></div><div><dt data-i18n="confidence">Confidence</dt><dd id="modelConfidence">—</dd></div><div><dt data-i18n="cloud_required">Cloud required</dt><dd id="cloudRequired">—</dd></div></dl></section>
+          <section class="panel" aria-labelledby="locationTitle"><h2 id="locationTitle" data-i18n="farm_location">Farm location</h2><p class="panel-copy" data-i18n="location_help">Used for live weather only when sensor GPS is unavailable.</p><form id="locationForm" novalidate><label for="locationInput" data-i18n="village_city">Village or city</label><div class="input-row"><input id="locationInput" type="text" maxlength="120" autocomplete="address-level2" placeholder="e.g. Ludhiana, Punjab"><button class="secondary-button" id="saveLocationBtn" type="submit" data-i18n="save">Save</button></div><p class="form-status" id="locationStatus" role="status" aria-live="polite"></p></form></section>
+          <section class="panel" aria-labelledby="accessTitle"><h2 id="accessTitle" data-i18n="write_access">Write access</h2><p class="panel-copy" data-i18n="token_help">If this device protects changes with an API token, enter it for this browser session.</p><form id="tokenForm"><label for="tokenInput" data-i18n="api_token">API token</label><div class="input-row"><input id="tokenInput" type="password" autocomplete="off" placeholder="Optional"><button class="secondary-button" type="submit" data-i18n="apply">Apply</button></div><p class="form-status" id="tokenStatus" role="status" aria-live="polite"></p></form></section>
+          <details class="panel raw-panel"><summary><span data-i18n="raw_sensor_data">Raw sensor data</span><span data-i18n="expand">Expand</span></summary><pre id="rawJson">Waiting for data…</pre></details>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Main navigation"><button class="is-active" data-tab="overview" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><span data-i18n="nav_overview">Overview</span></button><button data-tab="field" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 3.5C13 3.7 7.8 6 5.4 10.1c-1.7 2.9-1.3 6 .7 7.7L3.8 20a1 1 0 0 0 1.4 1.4l2.3-2.3c1.9 1 4.3.8 6.5-.5 4.3-2.5 6.5-7.7 6.5-14.1a1 1 0 0 0-1-1Z"/></svg><span data-i18n="nav_field_short">Field</span></button><button data-tab="system" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L15 3.5h-4L10.7 6A8 8 0 0 0 9 7L6.6 6l-2 3.5 2 1.5a7.8 7.8 0 0 0 0 2l-2 1.5 2 3.5L9 17a8 8 0 0 0 1.7 1l.3 2.5h4l.3-2.5a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg><span data-i18n="nav_system">System</span></button></nav>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="js/socket.io.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
