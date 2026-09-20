@@ -1,0 +1,30 @@
+# Ignore captured images and local state
+captured/
+capture.jpg
+users.json
+runtime/
+Data/kisan_mitra.db
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore virtual environments
+.venv/
+venv/
+env/
+
+# Ignore environment variables
+.env
+
+# Ignore OS generated files
+.DS_Store
+
+# Ignore executables
+*.exe
+
+# Ignore archive files
+*.rar
+
+# ONNX Runtime local telemetry
+*.ses

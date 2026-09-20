@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#18352b">
+  <meta name="description" content="Kisan Mitra — local farm intelligence that works offline.">
+  <title>Kisan Mitra</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%2327734b'/%3E%3Cpath d='M20 9c-5 3.5-7 7.6-7 11.2 0 4.2 3.1 7 7 7s7-2.8 7-7C27 16.6 25 12.5 20 9Z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/main.css">
+  <script>
+    (function() {
+      try {
+        var theme = localStorage.getItem('km-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') document.documentElement.classList.add('theme-dark');
+      } catch(e) {}
+    })();
+  </script>
+</head>
+<body class="is-unauthenticated">
+  <a class="skip-link" href="#mainContent">Skip to content</a>
+    <!-- Authentication Screen -->
+  <section class="auth-screen" id="authScreen" aria-labelledby="authHeading">
+    <div class="auth-container">
+      <div class="auth-top-bar">
+        <div class="auth-top-actions">
+          <button class="theme-toggle-btn auth-theme-toggle" id="authThemeToggleBtn" type="button" role="switch" aria-checked="false" aria-label="Toggle light or dark theme" title="Toggle theme">
+            <span class="theme-icon sun-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+            <span class="theme-icon moon-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+            <span class="theme-label auth-theme-label">Light</span>
+          </button>
+          <div class="language" role="group" aria-label="Language">
+            <button id="authLangEn" class="is-active" type="button" aria-pressed="true">English</button>
+            <button id="authLangHi" type="button" aria-pressed="false">हिंदी</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-card">
+        <!-- Brand Header -->
+        <div class="auth-brand">
+          <svg viewBox="0 0 40 40" aria-hidden="true" class="auth-brand-logo"><rect width="40" height="40" rx="12" fill="currentColor"/><path d="M20 9c-5 3.5-7 7.6-7 11.2 0 4.2 3.1 7 7 7s7-2.8 7-7C27 16.6 25 12.5 20 9Z" fill="#fff"/><path d="M20 14v10m0-5.6-3.2-2.2m3.2 5 3.5-2.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <div>
+            <h1 class="auth-brand-title">Kisan Mitra</h1>
+            <p class="auth-brand-subtitle" data-i18n="brand_tag">Local farm intelligence</p>
+          </div>
+        </div>
+
+        <!-- LOGIN VIEW -->
+        <div class="auth-view" id="loginView">
+          <h2 class="auth-title" id="authHeading" data-i18n="auth_welcome_back">Welcome back</h2>
+
+          <form id="loginForm" novalidate>
+            <div class="auth-field">
+              <label for="loginEmail" data-i18n="auth_email">Email</label>
+              <input id="loginEmail" type="email" autocomplete="email" required placeholder="Enter your email">
+            </div>
+
+            <div class="auth-field">
+              <div class="auth-field-header">
+                <label for="loginPassword" data-i18n="auth_password">Password</label>
+                <button type="button" class="auth-text-btn" id="forgotPasswordBtn" data-i18n="auth_forgot_password">Forgot password?</button>
+              </div>
+              <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter your password">
+            </div>
+
+            <div class="auth-message" id="loginMessage" role="alert" aria-live="polite" hidden></div>
+
+            <button class="primary-button auth-submit-btn" id="loginSubmitBtn" type="submit">
+              <span data-i18n="auth_login_btn">Log in</span>
+            </button>
+          </form>
+
+          <div class="auth-switch">
+            <span data-i18n="auth_dont_have_account">Don't have an account?</span>
+            <button type="button" class="auth-switch-btn" id="showSignupBtn" data-i18n="auth_signup_link">Sign up</button>
+          </div>
+        </div>
+
+        <!-- SIGN UP VIEW -->
+        <div class="auth-view" id="signupView" hidden>
+          <h2 class="auth-title" data-i18n="auth_create_account_title">Create your account</h2>
+
+          <form id="signupForm" novalidate>
+            <div class="auth-field">
+              <label for="signupName" data-i18n="auth_full_name">Full name</label>
+              <input id="signupName" type="text" autocomplete="name" required placeholder="Enter your name">
+            </div>
+
+            <div class="auth-field">
+              <label for="signupEmail" data-i18n="auth_email">Email</label>
+              <input id="signupEmail" type="email" autocomplete="email" required placeholder="Enter your email">
+            </div>
+
+            <div class="auth-field">
+              <label for="signupPassword" data-i18n="auth_password">Password</label>
+              <input id="signupPassword" type="password" autocomplete="new-password" required placeholder="Create a password">
+            </div>
+
+            <div class="auth-field">
+              <label for="signupConfirmPassword" data-i18n="auth_confirm_password">Confirm password</label>
+              <input id="signupConfirmPassword" type="password" autocomplete="new-password" required placeholder="Confirm your password">
+            </div>
+
+            <div class="auth-message" id="signupMessage" role="alert" aria-live="polite" hidden></div>
+
+            <button class="primary-button auth-submit-btn" id="signupSubmitBtn" type="submit">
+              <span data-i18n="auth_create_account_btn">Create account</span>
+            </button>
+          </form>
+
+          <div class="auth-switch">
+            <span data-i18n="auth_already_have_account">Already have an account?</span>
+            <button type="button" class="auth-switch-btn" id="showLoginBtn" data-i18n="auth_login_link">Log in</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<div class="app-shell" id="appShell" hidden>
+    <aside class="sidebar">
+      <div class="brand" aria-label="Kisan Mitra home">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="12" fill="currentColor"/><path d="M20 9c-5 3.5-7 7.6-7 11.2 0 4.2 3.1 7 7 7s7-2.8 7-7C27 16.6 25 12.5 20 9Z" fill="#fff"/><path d="M20 14v10m0-5.6-3.2-2.2m3.2 5 3.5-2.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Kisan Mitra<small data-i18n="brand_tag">Local farm intelligence</small></span>
+      </div>
+      <nav class="nav" aria-label="Main navigation" role="tablist">
+        <button class="nav-item is-active" id="tab-overview" data-tab="overview" type="button" role="tab" aria-selected="true" aria-controls="page-overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><span data-i18n="nav_overview">Farm Dashboard</span></button>
+        <button class="nav-item" id="tab-field" data-tab="field" type="button" role="tab" aria-selected="false" aria-controls="page-field" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 3.5C13 3.7 7.8 6 5.4 10.1c-1.7 2.9-1.3 6 .7 7.7L3.8 20a1 1 0 0 0 1.4 1.4l2.3-2.3c1.9 1 4.3.8 6.5-.5 4.3-2.5 6.5-7.7 6.5-14.1a1 1 0 0 0-1-1Zm-7 13.4c-1.2.7-2.4.9-3.4.6l6.6-6.6a1 1 0 0 0-1.4-1.4l-6.7 6.7c-.8-1.2-.8-3.1.1-5 1.8-3 5.7-4.9 10.7-5.5-.3 5.1-2.3 9.2-5.9 11.2Z"/></svg><span data-i18n="nav_field">Field tools</span></button>
+        <button class="nav-item" id="tab-edge" data-tab="edge" type="button" role="tab" aria-selected="false" aria-controls="page-edge" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7Zm-2 19h4v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1Z"/></svg><span data-i18n="nav_system">Edge AI</span></button>
+        <button class="nav-item" id="tab-rover" data-tab="rover" type="button" role="tab" aria-selected="false" aria-controls="page-rover" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6h-2c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h1c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h1c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2ZM9 19c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1Zm10 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1Zm2-5H3V8h4v2h10V8h4v6ZM8 12H6v-2h2v2Zm10 0h-2v-2h2v2Z"/></svg><span data-i18n="nav_rover">Rover</span></button>
+        <button class="nav-item" id="tab-history" data-tab="history" type="button" role="tab" aria-selected="false" aria-controls="page-history" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.5-13H11v6l5.2 3.1.8-1.2-4.5-2.7Z"/></svg><span data-i18n="nav_history">History</span></button>
+        <button class="nav-item" id="tab-system" data-tab="system" type="button" role="tab" aria-selected="false" aria-controls="page-system" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z"/></svg><span data-i18n="nav_system_short">System</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="connection" id="connection" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span><b id="connectionText">Connecting</b><small id="sourceText">Checking edge server…</small></span></div>
+        <div class="language" role="group" aria-label="Language"><button id="langEn" class="is-active" type="button" aria-pressed="true">English</button><button id="langHi" type="button" aria-pressed="false">हिंदी</button></div>
+
+        <div class="sidebar-divider" aria-hidden="true"></div>
+
+        <!-- Logged-in User Profile Area (below language selector) -->
+        <div class="user-profile-badge" id="userProfileBadge" hidden>
+          <div class="user-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div class="user-details">
+            <span class="user-welcome" data-i18n="auth_welcome_farmer">Farmer</span>
+            <strong class="user-name" id="userNameDisplay">Farmer</strong>
+            <button class="logout-btn" id="logoutBtn" type="button" title="Log out" aria-label="Log out">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+              <span data-i18n="log_out">Log out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main id="mainContent" tabindex="-1">
+      <!-- Main Application Header Theme Switcher (e-Yantra style) -->
+      <div class="main-top-bar" id="mainTopBar">
+        <button class="theme-toggle-btn" id="themeToggleBtn" type="button" role="switch" aria-checked="false" aria-label="Toggle light or dark theme" title="Toggle theme">
+          <span class="theme-icon sun-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="theme-icon moon-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+          <span class="theme-label" id="themeLabelText">Light</span>
+        </button>
+      </div>
+      <div class="offline-banner" id="offlineBanner" role="alert" hidden><span data-i18n="offline_message">Live updates are unavailable. Showing the last reading.</span><button id="retryBtn" type="button" data-i18n="retry">Retry</button></div>
+      <section class="page" id="page-overview" role="tabpanel" aria-labelledby="tab-overview" hidden>
+        <header class="page-header">
+          <div><p class="overline" id="dateLine">Today</p><h1 id="farmName">Kisan Mitra Farm</h1><p class="farm-meta" id="farmMeta">Loading field details…</p></div>
+          <div class="health-score" aria-label="Overall field health"><span data-i18n="field_health">Field health</span><strong id="healthScore">—</strong><small>/100</small><div class="health-track" aria-hidden="true"><i id="healthBar"></i></div></div>
+        </header>
+        <article class="priority" id="priorityCard"><div class="priority-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a1 1 0 0 1 1 1v1.1a8 8 0 1 1-6.5 2.5l-.8-.8a1 1 0 0 1 1.4-1.4l2.3 2.3a1 1 0 0 1 0 1.4l-2.3 2.3A1 1 0 1 1 5.7 9l.8-.8A6 6 0 1 0 12 6.1V7a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1h1Z"/></svg></div><div><p data-i18n="priority">Priority</p><h2 id="recommendationTitle">Reviewing the latest reading</h2><span id="recommendationMessage">Your next action will appear here.</span></div></article>
+        <div class="metric-grid" aria-label="Latest field readings">
+          <article class="metric"><div class="metric-label"><span class="metric-icon water" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Zm0 17a4 4 0 0 1-4-4c0-2.3 2.4-6.2 4-8.4 1.6 2.2 4 6.1 4 8.4a4 4 0 0 1-4 4Z"/></svg></span><span data-i18n="soil_moisture">Soil moisture</span></div><strong id="moistureValue">—</strong><span class="metric-note" id="moistureNote">Optimal 45–65%</span></article>
+          <article class="metric"><div class="metric-label"><span class="metric-icon heat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 13.8V5a5 5 0 0 0-10 0v8.8A6 6 0 1 0 15 13.8ZM10 21a4 4 0 0 1-3-6.7V5a3 3 0 0 1 6 0v9.3A4 4 0 0 1 10 21Zm1-10.8V5a1 1 0 0 0-2 0v5.2a3 3 0 1 0 2 0Z"/></svg></span><span data-i18n="temperature">Temperature</span></div><strong id="temperatureValue">—</strong><span class="metric-note" id="temperatureNote">Field sensor</span></article>
+          <article class="metric"><div class="metric-label"><span class="metric-icon air" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h10a2 2 0 1 0-2-2 1 1 0 0 1-2 0 4 4 0 1 1 4 4H4a1 1 0 0 1 0-2Zm16 4a4 4 0 0 1-4 4H4a1 1 0 0 1 0-2h12a2 2 0 1 0-2-2 1 1 0 0 1-2 0 4 4 0 0 1 8 0Z"/></svg></span><span data-i18n="humidity">Humidity</span></div><strong id="humidityValue">—</strong><span class="metric-note" id="humidityNote">Checking conditions</span></article>
+          <article class="metric"><div class="metric-label"><span class="metric-icon soil" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2Zm-2 6h20v3H2v-3Zm0 5h20v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3Z"/></svg></span><span data-i18n="soil_ph">Soil pH</span></div><strong id="phValue">—</strong><span class="metric-note" data-i18n="ph_note">Optimal 6.0–7.0</span></article>
+        </div>
+
+        <div class="section-row nutrient-header">
+          <h2 id="soilTitle" data-i18n="soil_nutrients">Soil nutrients</h2>
+          <span class="status-chip" id="fertilityStatus">Checking</span>
+        </div>
+        <div class="metric-grid nutrient-metric-grid" aria-label="Soil nutrients">
+          <article class="metric">
+            <div class="metric-label">
+              <span class="metric-icon nutrient-badge" aria-hidden="true"><b>N</b></span>
+              <span data-i18n="nitrogen">Nitrogen</span>
+            </div>
+            <strong id="nValue">—</strong>
+            <div class="bar metric-bar"><i id="nBar"></i></div>
+          </article>
+          <article class="metric">
+            <div class="metric-label">
+              <span class="metric-icon nutrient-badge" aria-hidden="true"><b>P</b></span>
+              <span data-i18n="phosphorus">Phosphorus</span>
+            </div>
+            <strong id="pValue">—</strong>
+            <div class="bar metric-bar"><i id="pBar"></i></div>
+          </article>
+          <article class="metric">
+            <div class="metric-label">
+              <span class="metric-icon nutrient-badge" aria-hidden="true"><b>K</b></span>
+              <span data-i18n="potassium">Potassium</span>
+            </div>
+            <strong id="kValue">—</strong>
+            <div class="bar metric-bar"><i id="kBar"></i></div>
+          </article>
+        </div>
+
+        <div class="panel secondary-soil-panel" aria-label="Secondary soil data">
+          <dl class="soil-facts-overview">
+            <div><dt data-i18n="ec">Electrical conductivity</dt><dd id="ecValue">—</dd></div>
+            <div><dt data-i18n="organic_carbon">Organic carbon</dt><dd id="carbonValue">—</dd></div>
+            <div><dt data-i18n="rainfall">Rainfall</dt><dd id="rainfallValue">—</dd></div>
+          </dl>
+        </div>
+
+        <div class="overview-grid">
+          <section class="panel health-panel" aria-labelledby="conditionsTitle"><div class="section-row"><h2 id="conditionsTitle" data-i18n="conditions">Conditions</h2><span class="updated" id="updatedAt">Waiting for data</span></div><div class="condition-list"><div><span data-i18n="soil">Soil</span><div class="bar"><i id="soilHealthBar"></i></div><b id="soilHealth">—</b></div><div><span data-i18n="water">Water</span><div class="bar"><i id="waterHealthBar"></i></div><b id="waterHealth">—</b></div><div><span data-i18n="climate">Climate</span><div class="bar"><i id="climateHealthBar"></i></div><b id="climateHealth">—</b></div><div><span data-i18n="disease_risk">Leaf health</span><div class="bar"><i id="diseaseHealthBar"></i></div><b id="diseaseHealth">—</b></div></div></section>
+          <section class="panel" aria-labelledby="noticesTitle"><div class="section-row"><h2 id="noticesTitle" data-i18n="notices">Notices</h2><span class="count" id="noticeCount">0</span></div><div class="notice-list" id="noticeList"><p class="empty">No notices yet.</p></div></section>
+        </div>
+
+        <section class="panel crop-matches-panel" aria-labelledby="cropTitle">
+          <div class="section-row"><h2 id="cropTitle" data-i18n="crop_matches">Crop matches</h2><span class="muted-label" data-i18n="top_three">Top 3</span></div>
+          <ol class="crop-list" id="cropList"><li><span>Loading recommendations…</span></li></ol>
+          <p class="panel-footnote" data-i18n="crop_disclaimer">Use these rankings as a starting point alongside local agronomic advice.</p>
+        </section>
+
+        <!-- Collapsible Raw Sensor Data & Farm Settings -->
+        <div class="overview-footer-panels" style="margin-top: 18px; display: grid; gap: 14px;">
+          <details class="panel raw-panel">
+            <summary><span data-i18n="raw_sensor_data">Raw sensor data</span><span data-i18n="expand">Expand</span></summary>
+            <pre id="rawJson">Waiting for data…</pre>
+          </details>
+          <details class="panel settings-panel">
+            <summary><span>Farm location &amp; API access</span><span data-i18n="expand">Expand</span></summary>
+            <div class="system-grid" style="margin-top: 16px;">
+              <section class="panel" aria-labelledby="locationTitle"><h2 id="locationTitle" data-i18n="farm_location">Farm location</h2><p class="panel-copy" data-i18n="location_help">Used for live weather only when sensor GPS is unavailable.</p><form id="locationForm" novalidate><label for="locationInput" data-i18n="village_city">Village or city</label><div class="input-row"><input id="locationInput" type="text" maxlength="120" autocomplete="address-level2" placeholder="e.g. Ludhiana, Punjab"><button class="secondary-button" id="saveLocationBtn" type="submit" data-i18n="save">Save</button></div><p class="form-status" id="locationStatus" role="status" aria-live="polite"></p></form></section>
+              <section class="panel" aria-labelledby="accessTitle"><h2 id="accessTitle" data-i18n="write_access">Write access</h2><p class="panel-copy" data-i18n="token_help">If this device protects changes with an API token, enter it for this browser session.</p><form id="tokenForm"><label for="tokenInput" data-i18n="api_token">API token</label><div class="input-row"><input id="tokenInput" type="password" autocomplete="off" placeholder="Optional"><button class="secondary-button" type="submit" data-i18n="apply">Apply</button></div><p class="form-status" id="tokenStatus" role="status" aria-live="polite"></p></form></section>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="page" id="page-field" role="tabpanel" aria-labelledby="tab-field" hidden>
+        <header class="page-header compact"><div><p class="overline" data-i18n="field_tools">Field tools</p><h1 data-i18n="soil_and_leaf">Soil &amp; leaf</h1></div><p data-i18n="field_intro">Turn sensor readings and one clear leaf photo into practical guidance.</p></header>
+        <div class="field-grid single-column">
+          <section class="panel scanner" aria-labelledby="scannerTitle"><div class="scanner-heading"><span class="scanner-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 3h5v2H5v4H3V4a1 1 0 0 1 1-1Zm11 0h5a1 1 0 0 1 1 1v5h-2V5h-4V3Zm4 12h2v5a1 1 0 0 1-1 1h-5v-2h4v-4ZM5 15v4h4v2H4a1 1 0 0 1-1-1v-5h2Zm7-8c-3.2 2.2-4.5 4.7-4.5 7 0 2.7 2 4.5 4.5 4.5s4.5-1.8 4.5-4.5c0-2.3-1.3-4.8-4.5-7Z"/></svg></span><div><h2 id="scannerTitle" data-i18n="leaf_scanner">Leaf scanner</h2><p data-i18n="scanner_help">Pepper, potato, and tomato. One leaf, close up, in daylight.</p></div></div>
+            <label class="upload" for="leafInput" id="dropZone"><img id="leafPreview" alt="Selected leaf preview" hidden><span class="upload-placeholder" id="uploadPlaceholder"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16V7.8L8.4 10.4 7 9l5-5 5 5-1.4 1.4L13 7.8V16h-2Zm-5 4a3 3 0 0 1-3-3v-3h2v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3h2v3a3 3 0 0 1-3 3H6Z"/></svg><b data-i18n="choose_photo">Choose a leaf photo</b><small data-i18n="photo_types">JPG, PNG, or WEBP · up to 10 MB</small></span></label>
+            <input class="visually-hidden" id="leafInput" type="file" accept="image/jpeg,image/png,image/webp"><div class="file-row" id="fileRow" hidden><span id="fileName"></span><button id="clearPhotoBtn" type="button" data-i18n="remove">Remove</button></div><button class="primary-button" id="scanBtn" type="button" disabled><span data-i18n="scan_leaf">Scan leaf</span></button>
+            <div class="scan-result" id="scanResult" role="status" aria-live="polite" hidden><div class="result-top"><span class="result-icon" id="resultIcon" aria-hidden="true"></span><div><small data-i18n="scan_result">Scan result</small><strong id="resultTitle"></strong></div><span class="confidence" id="resultConfidence"></span></div><p id="resultTreatment"></p><div class="result-meta"><span id="resultSpeed"></span><span data-i18n="local_private">Processed locally · photo not stored</span></div></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="page" id="page-edge" role="tabpanel" aria-labelledby="tab-edge" hidden>
+        <header class="page-header compact edge-header">
+          <div>
+            <p class="overline" data-i18n="system">EDGE AI</p>
+            <h1 data-i18n="device_status">Local intelligence for your field</h1>
+          </div>
+        </header>
+
+        <!-- Main Workspace: Edge AI Analysis -->
+        <section class="panel edge-analysis-panel" aria-labelledby="workspaceTitle">
+          <div class="workspace-header">
+            <h2 id="workspaceTitle" class="workspace-title">EDGE AI ANALYSIS</h2>
+            <p class="panel-copy">Local intelligence workspace for field imagery and soil sensor telemetry.</p>
+          </div>
+
+          <div class="analysis-workspace-grid">
+            <!-- Left Column: Image Selection -->
+            <div class="analysis-col analysis-image-col">
+              <label class="upload edge-upload" for="edgeImageInput" id="edgeDropZone" tabindex="0">
+                <img id="edgeImagePreview" alt="Selected field image preview" hidden>
+                <span class="upload-placeholder" id="edgeUploadPlaceholder">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 16V7.8L8.4 10.4 7 9l5-5 5 5-1.4 1.4L13 7.8V16h-2Zm-5 4a3 3 0 0 1-3-3v-3h2v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3h2v3a3 3 0 0 1-3 3H6Z"/></svg>
+                  <b class="upload-title">Choose a field image</b>
+                  <small class="upload-type-hint">JPG, PNG, or WEBP</small>
+                  <span class="upload-action-hint">Click to upload or drop an image</span>
+                </span>
+              </label>
+              <input class="visually-hidden" id="edgeImageInput" type="file" accept="image/jpeg,image/png,image/webp">
+              <div class="file-row edge-file-row" id="edgeFileRow" hidden>
+                <span id="edgeFileName" class="file-name-text"></span>
+                <div class="file-actions">
+                  <button id="replaceEdgePhotoBtn" type="button" class="action-btn replace-btn">Replace</button>
+                  <button id="clearEdgePhotoBtn" type="button" class="action-btn remove-btn" data-i18n="remove">Remove</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Analysis Selection & Actions -->
+            <div class="analysis-col analysis-options-col">
+              <div class="options-header">
+                <h3>WHAT WOULD YOU LIKE TO ANALYZE?</h3>
+                <p class="options-sub">Select any combination of models and sensor assessment.</p>
+              </div>
+
+              <div class="analysis-checkbox-group" role="group" aria-label="Analysis models and assessment options">
+                <!-- Checkbox 1: Crop Type -->
+                <label class="analysis-checkbox-item" for="checkCrop">
+                  <input type="checkbox" id="checkCrop" class="analysis-check">
+                  <div class="checkbox-content">
+                    <span class="checkbox-title">Crop Type</span>
+                    <span class="checkbox-desc">Image-based Edge AI model · Crop identification</span>
+                  </div>
+                  <span class="source-tag image-tag">Image</span>
+                </label>
+
+                <!-- Checkbox 2: Disease -->
+                <label class="analysis-checkbox-item" for="checkDisease">
+                  <input type="checkbox" id="checkDisease" class="analysis-check">
+                  <div class="checkbox-content">
+                    <span class="checkbox-title">Disease</span>
+                    <span class="checkbox-desc">Image-based Edge AI model · Foliar pathology</span>
+                  </div>
+                  <span class="source-tag image-tag">Image</span>
+                </label>
+
+                <!-- Checkbox 3: Pest -->
+                <label class="analysis-checkbox-item" for="checkPest">
+                  <input type="checkbox" id="checkPest" class="analysis-check">
+                  <div class="checkbox-content">
+                    <span class="checkbox-title">Pest</span>
+                    <span class="checkbox-desc">Image-based Edge AI model · Visible pest classifier</span>
+                  </div>
+                  <span class="source-tag image-tag">Image</span>
+                </label>
+
+                <!-- Checkbox 4: Soil Assessment -->
+                <label class="analysis-checkbox-item" for="checkSoil">
+                  <input type="checkbox" id="checkSoil" class="analysis-check">
+                  <div class="checkbox-content">
+                    <span class="checkbox-title">Soil Assessment</span>
+                    <span class="checkbox-desc">Sensor readings · N, P, K, pH, moisture, EC, carbon</span>
+                  </div>
+                  <span class="source-tag sensor-tag">Sensor Data</span>
+                </label>
+              </div>
+
+              <div class="analysis-action-box">
+                <button class="primary-button analyze-button" id="edgeAnalyzeBtn" type="button" disabled>Analyze</button>
+                <p class="edge-help-text" id="edgeHelpText" role="status" aria-live="polite">Select at least one analysis type.</p>
+                <div class="edge-feedback" id="edgeFeedback" role="status" aria-live="polite" hidden></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Lightweight Visual Workflow Diagram -->
+        <section class="panel workflow-panel" aria-labelledby="workflowHeading">
+          <div class="workflow-header">
+            <h2 id="workflowHeading">Analysis Workflow</h2>
+            <p class="panel-copy">Lightweight pipeline running locally on the Raspberry Pi edge device.</p>
+          </div>
+          <div class="workflow-diagram-container" role="img" aria-label="Workflow diagram showing image and sensor data entering Raspberry Pi, then selected analysis and final result">
+            <!-- Top Sensor Feed -->
+            <div class="workflow-sensor-row">
+              <div class="flow-pill sensor-pill">
+                <svg viewBox="0 0 24 24" class="flow-icon" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2Zm-2 6h20v3H2v-3Zm0 5h20v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3Z"/></svg>
+                <span class="pill-text"><strong>SENSOR DATA</strong><small>N, P, K, pH, Moisture, EC</small></span>
+              </div>
+              <div class="sensor-flow-line" aria-hidden="true">
+                <span class="line-horizontal"></span>
+                <span class="line-vertical"></span>
+                <svg class="line-arrow-down" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+            <!-- Main Horizontal Flow -->
+            <div class="workflow-main-row">
+              <div class="flow-pill">
+                <svg viewBox="0 0 24 24" class="flow-icon" aria-hidden="true"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>
+                <span class="pill-text"><strong>IMAGE</strong><small>Field capture</small></span>
+              </div>
+              <div class="flow-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="flow-pill">
+                <svg viewBox="0 0 24 24" class="flow-icon" aria-hidden="true"><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm3 5h6v6H9V9Z"/></svg>
+                <span class="pill-text"><strong>RASPBERRY PI</strong><small>Edge device</small></span>
+              </div>
+              <div class="flow-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="flow-pill highlight-pill">
+                <svg viewBox="0 0 24 24" class="flow-icon" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7Zm-2 19h4v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1Z"/></svg>
+                <span class="pill-text"><strong>SELECTED ANALYSIS</strong><small>Vision &amp; soil models</small></span>
+              </div>
+              <div class="flow-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="flow-pill success-pill">
+                <svg viewBox="0 0 24 24" class="flow-icon" aria-hidden="true"><path d="m9 16.2-3.5-3.5a1 1 0 0 1 1.4-1.4L9 13.4l7.1-7.1a1 1 0 1 1 1.4 1.4L9 16.2Z"/></svg>
+                <span class="pill-text"><strong>RESULT</strong><small>Combined insights</small></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI Models Section -->
+        <section class="edge-models-section" aria-labelledby="aiModelsTitle">
+          <div class="section-row" style="margin-bottom: 12px;">
+            <h2 id="aiModelsTitle">AI MODELS</h2>
+          </div>
+          <div class="model-cards-grid">
+            <!-- Card 1: Crop Detection -->
+            <article class="panel model-card" data-model="crop" tabindex="0" role="button" aria-expanded="false">
+              <div class="model-card-top">
+                <div class="model-icon crop" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 2v20m0-20c-2.5 3-4.5 4.5-4.5 8.5 3 0 4.5-2.5 4.5-8.5Zm0 7c2.5 2.5 4.5 4 4.5 8-3 0-4.5-2.5-4.5-8Zm0 5c-2.5 2.5-4.5 4-4.5 8 3 0 4.5-2.5 4.5-8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <span class="status-chip success">● Ready</span>
+              </div>
+              <h3>Crop Detection</h3>
+              <p class="model-desc">Identify crop type from field images.</p>
+              <div class="model-brief-meta">
+                <div><span>Model</span><b>Crop Classifier</b></div>
+                <div><span>Processing</span><b>Local inference</b></div>
+              </div>
+              <div class="model-details-body">
+                <dl class="model-spec-table">
+                  <div><dt>Model name</dt><dd>Crop Classifier</dd></div>
+                  <div><dt>Status</dt><dd class="text-success">Ready</dd></div>
+                  <div><dt>Inference</dt><dd>Local / Edge</dd></div>
+                  <div><dt>Cloud required</dt><dd>No</dd></div>
+                  <div><dt>Input</dt><dd>Plant / field image</dd></div>
+                  <div><dt>Output</dt><dd>Result + confidence</dd></div>
+                  <div><dt>Last inference</dt><dd class="muted-value">Not run yet</dd></div>
+                </dl>
+              </div>
+              <div class="model-card-footer">
+                <span class="detail-toggle-label">View specifications</span>
+                <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </div>
+            </article>
+
+            <!-- Card 2: Disease Detection -->
+            <article class="panel model-card" data-model="disease" tabindex="0" role="button" aria-expanded="false">
+              <div class="model-card-top">
+                <div class="model-icon disease" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M19.5 3.5C13 3.7 7.8 6 5.4 10.1c-1.7 2.9-1.3 6 .7 7.7L3.8 20a1 1 0 0 0 1.4 1.4l2.3-2.3c1.9 1 4.3.8 6.5-.5 4.3-2.5 6.5-7.7 6.5-14.1a1 1 0 0 0-1-1Zm-7 13.4c-1.2.7-2.4.9-3.4.6l6.6-6.6a1 1 0 0 0-1.4-1.4l-6.7 6.7c-.8-1.2-.8-3.1.1-5 1.8-3 5.7-4.9 10.7-5.5-.3 5.1-2.3 9.2-5.9 11.2Z"/></svg>
+                </div>
+                <span class="status-chip success">● Ready</span>
+              </div>
+              <h3>Disease Detection</h3>
+              <p class="model-desc">Identify possible crop diseases from field images.</p>
+              <div class="model-brief-meta">
+                <div><span>Model</span><b id="modelName">PlantVillage EfficientNetV2</b></div>
+                <div><span>Processing</span><b>Local inference</b></div>
+              </div>
+              <div class="model-details-body">
+                <dl class="model-spec-table">
+                  <div><dt>Model name</dt><dd>PlantVillage EfficientNetV2</dd></div>
+                  <div><dt>Status</dt><dd class="text-success">Ready</dd></div>
+                  <div><dt>Inference</dt><dd>Local / Edge</dd></div>
+                  <div><dt>Cloud required</dt><dd id="cloudRequired">No</dd></div>
+                  <div><dt>Input</dt><dd>Plant / field image</dd></div>
+                  <div><dt>Output</dt><dd>Result + confidence</dd></div>
+                  <div><dt>Last inference</dt><dd id="modelSpeed" class="muted-value">Not run yet</dd></div>
+                </dl>
+              </div>
+              <div class="model-card-footer">
+                <span class="detail-toggle-label">View specifications</span>
+                <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </div>
+            </article>
+
+            <!-- Card 3: Pest Detection -->
+            <article class="panel model-card" data-model="pest" tabindex="0" role="button" aria-expanded="false">
+              <div class="model-card-top">
+                <div class="model-icon pest" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 0-4 4v1H6a1 1 0 0 0 0 2h2v2H5a1 1 0 0 0 0 2h3v1a4 4 0 0 0 8 0v-1h3a1 1 0 0 0 0-2h-3v-2h2a1 1 0 0 0 0-2h-2V7a4 4 0 0 0-4-4Zm-2 5a2 2 0 1 1 4 0v1h-4V7Zm-1 4h6a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2Z"/></svg>
+                </div>
+                <span class="status-chip success">● Ready</span>
+              </div>
+              <h3>Pest Detection</h3>
+              <p class="model-desc">Identify visible crop pests from field images.</p>
+              <div class="model-brief-meta">
+                <div><span>Model</span><b>Pest Classifier</b></div>
+                <div><span>Processing</span><b>Local inference</b></div>
+              </div>
+              <div class="model-details-body">
+                <dl class="model-spec-table">
+                  <div><dt>Model name</dt><dd>Pest Classifier</dd></div>
+                  <div><dt>Status</dt><dd class="text-success">Ready</dd></div>
+                  <div><dt>Inference</dt><dd>Local / Edge</dd></div>
+                  <div><dt>Cloud required</dt><dd>No</dd></div>
+                  <div><dt>Input</dt><dd>Plant / field image</dd></div>
+                  <div><dt>Output</dt><dd>Result + confidence</dd></div>
+                  <div><dt>Last inference</dt><dd class="muted-value">Not run yet</dd></div>
+                </dl>
+              </div>
+              <div class="model-card-footer">
+                <span class="detail-toggle-label">View specifications</span>
+                <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <!-- ROVER PAGE -->
+      <section class="page" id="page-rover" role="tabpanel" aria-labelledby="tab-rover" hidden>
+        <header class="page-header compact rover-header">
+          <div>
+            <p class="overline" data-i18n="rover_overline">ROVER</p>
+            <h1 data-i18n="rover_title">Field operations &amp; live control</h1>
+          </div>
+          <p class="panel-copy" data-i18n="rover_desc">Monitor the rover, control movement and manage field operations.</p>
+        </header>
+
+        <!-- ROVER STATUS CARD -->
+        <section class="panel rover-status-card" aria-labelledby="roverStatusTitle">
+          <div class="section-row" style="margin-bottom: 14px;">
+            <h2 id="roverStatusTitle" data-i18n="rover_status">ROVER STATUS</h2>
+            <div class="rover-runtime-pill">
+              <span class="muted-label" data-i18n="running_time">Running time</span>
+              <strong id="roverRunningTime">00:24:18</strong>
+            </div>
+          </div>
+          <div class="rover-status-grid">
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="rpi_label">Raspberry Pi</span>
+              <span class="status-chip success"><span class="status-dot-static success"></span> <span data-i18n="status_online">Online</span></span>
+            </div>
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="arduino_label">Arduino Mega</span>
+              <span class="status-chip success"><span class="status-dot-static success"></span> <span data-i18n="status_connected">Connected</span></span>
+            </div>
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="camera_label">Camera</span>
+              <span class="status-chip success"><span class="status-dot-static success"></span> <span data-i18n="status_ready">Ready</span></span>
+            </div>
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="npk_sensor_label">NPK Sensor</span>
+              <span class="status-chip success"><span class="status-dot-static success"></span> <span data-i18n="status_ready">Ready</span></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- MAIN ROVER CONTROL AREA (Two-Column Layout) -->
+        <div class="rover-control-grid">
+          <!-- Left: Live Camera -->
+          <section class="panel rover-camera-panel" aria-labelledby="cameraSectionTitle">
+            <div class="section-row" style="margin-bottom: 12px;">
+              <h2 id="cameraSectionTitle" data-i18n="live_camera">LIVE CAMERA</h2>
+              <span class="status-chip success"><span class="status-dot-static success"></span> <span data-i18n="camera_ready">Camera Ready</span></span>
+            </div>
+            <div class="camera-viewport-placeholder" role="region" aria-label="Camera preview area">
+              <div class="camera-grid-overlay"></div>
+              <div class="camera-placeholder-content">
+                <span class="camera-placeholder-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/></svg>
+                </span>
+                <strong data-i18n="camera_placeholder_title">Live Camera</strong>
+                <p data-i18n="camera_placeholder_desc">Camera feed will appear here</p>
+              </div>
+              <div class="camera-overlay-badge">
+                <span class="rec-dot"></span> <span data-i18n="camera_ready">Camera Ready</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Right: Movement & Actions Column -->
+          <div class="rover-actions-column">
+            <!-- Movement Controller -->
+            <section class="panel rover-movement-panel" aria-labelledby="movementTitle">
+              <div class="section-row" style="margin-bottom: 14px;">
+                <h2 id="movementTitle" data-i18n="movement_title">MOVEMENT</h2>
+                <span class="movement-state-badge" id="movementStateBadge" data-i18n="movement_stopped">Stopped</span>
+              </div>
+              <div class="movement-dpad-container" id="movementControls" role="group" aria-label="Rover Movement Controller">
+                <div class="dpad-row">
+                  <button type="button" class="dpad-btn dpad-up" id="btnMoveForward" aria-label="Forward" title="Forward">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-7 7h4v9h6v-9h4z"/></svg>
+                    <span class="dpad-label" data-i18n="move_forward">Forward</span>
+                  </button>
+                </div>
+                <div class="dpad-row middle">
+                  <button type="button" class="dpad-btn dpad-left" id="btnMoveLeft" aria-label="Left" title="Left">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l7-7v4h9v6h-9v4z"/></svg>
+                    <span class="dpad-label" data-i18n="move_left">Left</span>
+                  </button>
+                  <button type="button" class="dpad-btn dpad-stop is-active" id="btnMoveStop" aria-label="Stop" title="Stop">
+                    <span class="stop-symbol" aria-hidden="true">■</span>
+                    <span class="dpad-label" data-i18n="move_stop">Stop</span>
+                  </button>
+                  <button type="button" class="dpad-btn dpad-right" id="btnMoveRight" aria-label="Right" title="Right">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12l-7-7v4H4v6h9v4z"/></svg>
+                    <span class="dpad-label" data-i18n="move_right">Right</span>
+                  </button>
+                </div>
+                <div class="dpad-row">
+                  <button type="button" class="dpad-btn dpad-down" id="btnMoveReverse" aria-label="Reverse" title="Reverse">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20l7-7h-4V4h-6v9H5z"/></svg>
+                    <span class="dpad-label" data-i18n="move_reverse">Reverse</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Field Actions -->
+            <section class="panel rover-field-actions-panel" aria-labelledby="fieldActionsTitle">
+              <h2 id="fieldActionsTitle" data-i18n="field_actions_title">FIELD ACTIONS</h2>
+              <div class="field-actions-list">
+                <!-- 1. NPK Sample -->
+                <article class="field-action-card">
+                  <div class="action-card-info">
+                    <strong data-i18n="action_npk_title">NPK SAMPLE</strong>
+                    <p data-i18n="action_npk_desc">Deploy sensor and collect soil reading</p>
+                    <div class="action-sequence-flow" aria-label="NPK Sequence">
+                      <span class="seq-step" data-i18n="seq_deploy">Deploy</span>
+                      <span class="seq-arrow" aria-hidden="true">→</span>
+                      <span class="seq-step" data-i18n="seq_read">Read</span>
+                      <span class="seq-arrow" aria-hidden="true">→</span>
+                      <span class="seq-step" data-i18n="seq_save">Save location</span>
+                      <span class="seq-arrow" aria-hidden="true">→</span>
+                      <span class="seq-step" data-i18n="seq_retract">Retract</span>
+                    </div>
+                  </div>
+                  <button type="button" class="secondary-button compact-btn" id="btnActionNpk" data-i18n="btn_sample">Sample</button>
+                </article>
+
+                <!-- 2. Seeder -->
+                <article class="field-action-card">
+                  <div class="action-card-info">
+                    <strong data-i18n="action_seeder_title">SEEDER</strong>
+                    <p data-i18n="action_seeder_desc">Activate seeder</p>
+                    <span class="servo-meta-pill" data-i18n="seeder_servo_spec">Servo action: 45°</span>
+                  </div>
+                  <button type="button" class="secondary-button compact-btn" id="btnActionSeeder" data-i18n="btn_seed">Seed</button>
+                </article>
+
+                <!-- 3. Pesticide -->
+                <article class="field-action-card">
+                  <div class="action-card-info">
+                    <strong data-i18n="action_pesticide_title">PESTICIDE</strong>
+                    <p data-i18n="action_pesticide_desc">Activate spray pump</p>
+                  </div>
+                  <button type="button" class="secondary-button compact-btn" id="btnActionPesticide" data-i18n="btn_spray">Spray</button>
+                </article>
+              </div>
+            </section>
+
+            <!-- Emergency Stop -->
+            <section class="panel rover-emergency-panel" id="emergencyStopPanel" aria-label="Emergency Stop">
+              <button type="button" class="emergency-stop-button" id="btnEmergencyStop">
+                <svg viewBox="0 0 24 24" class="emergency-icon" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm-1 15h2v-2h-2v2Zm0-4h2V7h-2v6Z"/></svg>
+                <span data-i18n="emergency_stop">EMERGENCY STOP</span>
+              </button>
+              <div class="emergency-alert" id="emergencyAlertBox" hidden role="alert">
+                <strong data-i18n="emergency_stop_activated">Emergency stop activated</strong>
+                <p data-i18n="emergency_stop_help">Movement controls locked for safety.</p>
+                <button type="button" class="secondary-button reset-emergency-btn" id="btnResetEmergency" data-i18n="reset_emergency">Reset Stop</button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- FIELD MAP / GRID -->
+        <section class="panel rover-field-map-panel" aria-labelledby="fieldMapTitle">
+          <div class="section-row" style="margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h2 id="fieldMapTitle" data-i18n="field_map_title">FIELD MAP</h2>
+              <p class="panel-copy" data-i18n="field_map_desc">4×4 parcel navigation grid with active rover position and sensor logs.</p>
+            </div>
+            <div class="map-legend">
+              <span class="legend-item"><span class="legend-dot rover-dot"></span> <span data-i18n="legend_rover">Rover</span></span>
+              <span class="legend-item"><span class="legend-diamond npk-diamond">◆</span> <span data-i18n="legend_npk">NPK reading</span></span>
+              <span class="legend-item"><span class="legend-dash path-dash">—</span> <span data-i18n="legend_path">Rover path</span></span>
+            </div>
+          </div>
+          <div class="field-grid-wrapper">
+            <div class="field-map-grid" role="grid" aria-label="Field Grid">
+              <!-- Header row -->
+              <div class="grid-header-cell corner-cell"></div>
+              <div class="grid-header-cell col-label">A</div>
+              <div class="grid-header-cell col-label">B</div>
+              <div class="grid-header-cell col-label">C</div>
+              <div class="grid-header-cell col-label">D</div>
+
+              <!-- Row 1 -->
+              <div class="grid-header-cell row-label">1</div>
+              <div class="grid-cell has-path-start" data-coord="A1"><span class="coord-tag">A1</span><span class="path-node"></span></div>
+              <div class="grid-cell" data-coord="B1"><span class="coord-tag">B1</span></div>
+              <div class="grid-cell" data-coord="C1"><span class="coord-tag">C1</span></div>
+              <div class="grid-cell" data-coord="D1"><span class="coord-tag">D1</span></div>
+
+              <!-- Row 2 -->
+              <div class="grid-header-cell row-label">2</div>
+              <div class="grid-cell" data-coord="A2"><span class="coord-tag">A2</span></div>
+              <div class="grid-cell has-path-mid" data-coord="B2"><span class="coord-tag">B2</span><span class="path-node"></span></div>
+              <div class="grid-cell has-rover" data-coord="C2">
+                <span class="coord-tag">C2</span>
+                <div class="rover-marker-pin" title="Rover Location: C2">
+                  <span class="pin-pulse"></span>
+                  <span class="rover-pin-dot">●</span>
+                  <span class="pin-label" data-i18n="legend_rover">Rover</span>
+                </div>
+              </div>
+              <div class="grid-cell" data-coord="D2"><span class="coord-tag">D2</span></div>
+
+              <!-- Row 3 -->
+              <div class="grid-header-cell row-label">3</div>
+              <div class="grid-cell" data-coord="A3"><span class="coord-tag">A3</span></div>
+              <div class="grid-cell has-npk" data-coord="B3">
+                <span class="coord-tag">B3</span>
+                <div class="npk-marker-pin" title="NPK Reading: B3">
+                  <span class="npk-pin-diamond">◆</span>
+                  <span class="pin-label" data-i18n="legend_npk">NPK</span>
+                </div>
+              </div>
+              <div class="grid-cell" data-coord="C3"><span class="coord-tag">C3</span></div>
+              <div class="grid-cell" data-coord="D3"><span class="coord-tag">D3</span></div>
+
+              <!-- Row 4 -->
+              <div class="grid-header-cell row-label">4</div>
+              <div class="grid-cell" data-coord="A4"><span class="coord-tag">A4</span></div>
+              <div class="grid-cell" data-coord="B4"><span class="coord-tag">B4</span></div>
+              <div class="grid-cell" data-coord="C4"><span class="coord-tag">C4</span></div>
+              <div class="grid-cell" data-coord="D4"><span class="coord-tag">D4</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RECENT ACTIVITY -->
+        <section class="panel rover-recent-activity-panel" aria-labelledby="recentActivityTitle">
+          <div class="section-row" style="margin-bottom: 12px;">
+            <h2 id="recentActivityTitle" data-i18n="recent_activity_title">RECENT ACTIVITY</h2>
+            <span class="muted-label" data-i18n="prototype_log">Prototype log</span>
+          </div>
+          <div class="rover-activity-list" role="list">
+            <article class="rover-activity-item" role="listitem">
+              <span class="activity-time">12:42</span>
+              <div class="activity-dot npk-dot"></div>
+              <div class="activity-detail">
+                <strong data-i18n="activity_npk_sample">NPK sample</strong>
+                <span class="activity-loc"><span data-i18n="location_prefix">Location:</span> <b>B3</b></span>
+              </div>
+            </article>
+            <article class="rover-activity-item" role="listitem">
+              <span class="activity-time">12:38</span>
+              <div class="activity-dot move-dot"></div>
+              <div class="activity-detail">
+                <strong data-i18n="activity_rover_moved">Rover moved</strong>
+                <span class="activity-loc"><span data-i18n="location_prefix">Location:</span> <b>C2</b></span>
+              </div>
+            </article>
+            <article class="rover-activity-item" role="listitem">
+              <span class="activity-time">12:31</span>
+              <div class="activity-dot seeder-dot"></div>
+              <div class="activity-detail">
+                <strong data-i18n="activity_seeder_activated">Seeder activated</strong>
+                <span class="activity-loc"><span data-i18n="location_prefix">Location:</span> <b>C1</b></span>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <!-- ================================================== -->
+      <!-- HISTORY PAGE -->
+      <!-- ================================================== -->
+      <section class="page" id="page-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <!-- Page Header -->
+        <header class="page-header compact">
+          <div>
+            <p class="overline" data-i18n="history_overline">HISTORY</p>
+            <h1 data-i18n="history_title">Past field analyses</h1>
+          </div>
+          <p data-i18n="history_desc">Review previous crop, disease, pest and soil assessments.</p>
+        </header>
+
+        <!-- Summary Cards Row (Sample Data Only) -->
+        <div class="metric-grid history-summary-grid" id="historySummaryGrid" aria-label="Analysis summary counts">
+          <article class="metric history-summary-card">
+            <div class="metric-label">
+              <span class="metric-icon history-icon-all" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 16H5V5h14v14Zm-7-2h5v-2h-5v2Zm0-4h5v-2h-5v2Zm0-4h5V7h-5v2ZM7 7h3v2H7V7Zm0 4h3v2H7v-2Zm0 4h3v2H7v-2Z"/></svg>
+              </span>
+              <span data-i18n="summary_analyses">Analyses</span>
+            </div>
+            <strong id="sumTotalCount">24</strong>
+            <span class="metric-note" data-i18n="sample_data_badge">Sample data</span>
+          </article>
+
+          <article class="metric history-summary-card">
+            <div class="metric-label">
+              <span class="metric-icon history-icon-crop" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12c0 3.58 2.5 7 6 7.8V22h4v-2.2c3.5-.8 6-4.22 6-7.8 0-5.5-4.5-10-6-10Zm0 15c-2.76 0-5-2.24-5-5 0-2.3 3.5-6.5 5-8.2 1.5 1.7 5 5.9 5 8.2 0 2.76-2.24 5-5 5Z"/></svg>
+              </span>
+              <span data-i18n="summary_crop">Crop</span>
+            </div>
+            <strong id="sumCropCount">12</strong>
+            <span class="metric-note" data-i18n="sample_records">Sample records</span>
+          </article>
+
+          <article class="metric history-summary-card">
+            <div class="metric-label">
+              <span class="metric-icon history-icon-disease" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 2a9 9 0 0 0-9 9c0 4 3 7.5 7 8.7V22h4v-2.3c4-1.2 7-4.7 7-8.7a9 9 0 0 0-9-9Zm1 13h-2v-2h2v2Zm0-4h-2V7h2v4Z"/></svg>
+              </span>
+              <span data-i18n="summary_disease">Disease</span>
+            </div>
+            <strong id="sumDiseaseCount">7</strong>
+            <span class="metric-note" data-i18n="sample_records">Sample records</span>
+          </article>
+
+          <article class="metric history-summary-card">
+            <div class="metric-label">
+              <span class="metric-icon history-icon-pest" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M20 8h-2.81a5.985 5.985 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.57 7.27 7.23 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8Zm-6 8h-4v-6h4v6Z"/></svg>
+              </span>
+              <span data-i18n="summary_pest">Pest</span>
+            </div>
+            <strong id="sumPestCount">5</strong>
+            <span class="metric-note" data-i18n="sample_records">Sample records</span>
+          </article>
+
+          <article class="metric history-summary-card">
+            <div class="metric-label">
+              <span class="metric-icon history-icon-soil" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2Zm-2 6h20v3H2v-3Zm0 5h20v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3Z"/></svg>
+              </span>
+              <span data-i18n="summary_soil">Soil</span>
+            </div>
+            <strong id="sumSoilCount">5</strong>
+            <span class="metric-note" data-i18n="sample_records">Sample records</span>
+          </article>
+        </div>
+
+        <!-- Search and Filters Section -->
+        <section class="panel history-filter-panel" id="historyFilterPanel" aria-label="Search and filter past analyses">
+          <div class="history-filter-bar">
+            <!-- Search Field -->
+            <div class="history-search-wrap">
+              <svg class="history-search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z"/></svg>
+              <input type="search" id="historySearchInput" placeholder="Search analyses..." aria-label="Search analyses">
+              <button type="button" id="historySearchClear" class="history-search-clear" aria-label="Clear search" hidden>✕</button>
+            </div>
+
+            <!-- Analysis Type Filter Pills -->
+            <div class="history-type-pills" role="group" aria-label="Analysis type filters">
+              <button type="button" class="history-pill is-active" data-filter-type="all" data-i18n="filter_all">All</button>
+              <button type="button" class="history-pill" data-filter-type="crop" data-i18n="filter_crop">Crop</button>
+              <button type="button" class="history-pill" data-filter-type="disease" data-i18n="filter_disease">Disease</button>
+              <button type="button" class="history-pill" data-filter-type="pest" data-i18n="filter_pest">Pest</button>
+              <button type="button" class="history-pill" data-filter-type="soil" data-i18n="filter_soil">Soil</button>
+            </div>
+
+            <!-- Dropdown Filters: Location & Date -->
+            <div class="history-dropdown-group">
+              <select id="historyLocationFilter" class="history-select" aria-label="Filter by location">
+                <option value="all" data-i18n="opt_all_locations">All locations</option>
+                <option value="A4">A4</option>
+                <option value="B3">B3</option>
+                <option value="C2">C2</option>
+                <option value="D1">D1</option>
+              </select>
+
+              <select id="historyDateFilter" class="history-select" aria-label="Filter by date">
+                <option value="all" data-i18n="opt_all_dates">All dates</option>
+                <option value="today" data-i18n="opt_today">Today</option>
+                <option value="yesterday" data-i18n="opt_yesterday">Yesterday</option>
+                <option value="older" data-i18n="opt_older">Older</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- History Records Table Panel -->
+        <section class="panel history-table-panel" id="historyTablePanel" aria-label="Analyses records table">
+          <div class="history-table-container">
+            <table class="history-table" id="historyTable">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="th_datetime">Date &amp; Time</th>
+                  <th scope="col" data-i18n="th_location">Location</th>
+                  <th scope="col" data-i18n="th_analysis">Analysis</th>
+                  <th scope="col" data-i18n="th_result">Result</th>
+                  <th scope="col" data-i18n="th_confidence">Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- Injected dynamically by app.js -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty State (When filters return 0 records) -->
+          <div id="historyEmptyState" class="history-empty-state" hidden>
+            <div class="empty-icon-box" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z"/></svg>
+            </div>
+            <strong data-i18n="no_analyses_found">No analyses found</strong>
+            <p data-i18n="no_analyses_help">Try changing your search or filters.</p>
+            <button type="button" id="historyResetFiltersBtn" class="secondary-button reset-filter-btn" data-i18n="btn_reset_filters">Reset filters</button>
+          </div>
+        </section>
+      </section>
+
+      <!-- ================================================== -->
+      <!-- SYSTEM PAGE (Diagnostics & Hardware Status) -->
+      <!-- ================================================== -->
+      <section class="page" id="page-system" role="tabpanel" aria-labelledby="tab-system" hidden>
+        <header class="page-header compact">
+          <div>
+            <p class="overline" data-i18n="system_status_overline">SYSTEM</p>
+            <h1 data-i18n="system_status_title">Device &amp; diagnostics</h1>
+          </div>
+          <p data-i18n="system_status_desc">Local edge compute, hardware interfaces, network telemetry and runtime status.</p>
+        </header>
+
+        <!-- Edge Hardware & Runtime Card -->
+        <section class="panel system-overview-panel" style="margin-top: 20px;" aria-labelledby="edgeHardwareTitle">
+          <div class="section-row" style="margin-bottom: 16px;">
+            <h2 id="edgeHardwareTitle" data-i18n="edge_diagnostics_title">EDGE HARDWARE &amp; RUNTIME</h2>
+            <span class="status-chip success">● <span data-i18n="status_online">Online</span></span>
+          </div>
+
+          <!-- Prototype Device States -->
+          <div class="rover-status-grid system-device-grid">
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="rpi_4b_label">Raspberry Pi 4B</span>
+              <span class="status-chip success">● <span data-i18n="status_online">Online</span></span>
+            </div>
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="arduino_label">Arduino Mega</span>
+              <span class="status-chip success">● <span data-i18n="status_connected">Connected</span></span>
+            </div>
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="camera_label">Camera</span>
+              <span class="status-chip success">● <span data-i18n="status_ready">Ready</span></span>
+            </div>
+            <div class="rover-status-item">
+              <span class="status-item-label" data-i18n="npk_sensor_label">NPK Sensor</span>
+              <span class="status-chip success">● <span data-i18n="status_ready">Ready</span></span>
+            </div>
+          </div>
+
+          <!-- Runtime Information -->
+          <div class="system-runtime-row">
+            <div class="system-runtime-item">
+              <span class="muted-label" data-i18n="runtime_label">Runtime:</span>
+              <strong class="runtime-val-text" data-i18n="runtime_val">Python / Flask / Socket.IO</strong>
+            </div>
+            <div class="system-runtime-item">
+              <span class="muted-label" data-i18n="storage_label">Storage:</span>
+              <strong class="runtime-val-text" data-i18n="storage_val">SQLite / RAM</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- Farm Location Card -->
+        <section class="panel system-location-panel" style="margin-top: 18px;" aria-labelledby="systemLocationTitle">
+          <div class="section-row" style="margin-bottom: 8px;">
+            <h2 id="systemLocationTitle" data-i18n="farm_location_title">FARM LOCATION</h2>
+          </div>
+          <p class="panel-copy" style="margin-top: 0; margin-bottom: 14px;" data-i18n="location_help">Used for live weather only when sensor GPS is unavailable.</p>
+          <form id="systemLocationForm" novalidate>
+            <label for="systemLocationInput" data-i18n="village_city">Village or city</label>
+            <div class="input-row" style="margin-top: 6px;">
+              <input id="systemLocationInput" name="location" type="text" maxlength="120" autocomplete="address-level2" placeholder="e.g. Ludhiana, Punjab">
+              <button class="secondary-button" id="systemSaveLocationBtn" type="submit" data-i18n="save">Save</button>
+            </div>
+            <p class="form-status" id="systemLocationStatus" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <!-- Advanced Collapsible Section -->
+        <details class="panel settings-panel system-advanced-panel" style="margin-top: 18px;">
+          <summary><span data-i18n="advanced_title">ADVANCED</span><span data-i18n="expand">Expand</span></summary>
+          <div class="system-grid" style="margin-top: 16px; grid-template-columns: 1fr;">
+            <section class="panel" style="background: var(--surface-soft);" aria-labelledby="systemAccessTitle">
+              <h2 id="systemAccessTitle" style="font-size: 14px; margin-bottom: 4px;" data-i18n="write_access">Write access</h2>
+              <p class="panel-copy" style="margin-top: 0; margin-bottom: 12px;" data-i18n="token_help">If this device protects changes with an API token, enter it for this browser session.</p>
+              <form id="systemTokenForm">
+                <label for="systemTokenInput" data-i18n="api_token">API token</label>
+                <div class="input-row" style="margin-top: 6px;">
+                  <input id="systemTokenInput" name="token" type="password" autocomplete="off" placeholder="Optional">
+                  <button class="secondary-button" id="systemSaveTokenBtn" type="submit" data-i18n="apply">Apply</button>
+                </div>
+                <p class="form-status" id="systemTokenStatus" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+          </div>
+        </details>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" id="mobileNav" aria-label="Main navigation" hidden>
+    <button class="is-active" data-tab="overview" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><span data-i18n="nav_overview">Farm Dashboard</span></button>
+    <button data-tab="field" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 3.5C13 3.7 7.8 6 5.4 10.1c-1.7 2.9-1.3 6 .7 7.7L3.8 20a1 1 0 0 0 1.4 1.4l2.3-2.3c1.9 1 4.3.8 6.5-.5 4.3-2.5 6.5-7.7 6.5-14.1a1 1 0 0 0-1-1Zm-7 13.4c-1.2.7-2.4.9-3.4.6l6.6-6.6a1 1 0 0 0-1.4-1.4l-6.7 6.7c-.8-1.2-.8-3.1.1-5 1.8-3 5.7-4.9 10.7-5.5-.3 5.1-2.3 9.2-5.9 11.2Z"/></svg><span data-i18n="nav_field_short">Field</span></button>
+    <button data-tab="edge" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7Zm-2 19h4v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1Z"/></svg><span data-i18n="nav_system">Edge AI</span></button>
+    <button data-tab="rover" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6h-2c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h1c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h1c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2ZM9 19c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1Zm10 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1Zm2-5H3V8h4v2h10V8h4v6ZM8 12H6v-2h2v2Zm10 0h-2v-2h2v2Z"/></svg><span data-i18n="nav_rover">Rover</span></button>
+    <button data-tab="history" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.5-13H11v6l5.2 3.1.8-1.2-4.5-2.7Z"/></svg><span data-i18n="nav_history">History</span></button>
+    <button data-tab="system" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58ZM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2Z"/></svg><span data-i18n="nav_system_short">System</span></button>
+  </nav>
+
+  <!-- History Detail Modal Backdrop -->
+  <div class="history-modal-backdrop" id="historyModalBackdrop" hidden>
+    <div class="history-modal" id="historyDetailModal" role="dialog" aria-modal="true" aria-labelledby="modalHeading">
+      <div class="history-modal-header">
+        <div class="modal-header-text">
+          <span class="overline" data-i18n="modal_overline">ANALYSIS DETAILS</span>
+          <h2 id="modalHeading" class="modal-title">Wheat · Early Blight</h2>
+          <div class="modal-meta-row">
+            <span class="modal-meta-item" id="modalDateTime">Sep 20, 2026 · 14:32</span>
+            <span class="modal-loc-badge" id="modalLocationBadge"><span data-i18n="location_label">Location:</span> <b id="modalLocationCoord">C2</b></span>
+            <div class="modal-type-chips" id="modalTypeChips"></div>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="modalCloseBtn" aria-label="Close details">✕</button>
+      </div>
+
+      <div class="history-modal-body">
+        <!-- Media Section: Image (Crop/Disease/Pest) OR Soil Telemetry -->
+        <section class="modal-section" id="modalImageSection">
+          <div class="section-row modal-sec-header">
+            <h3 data-i18n="original_image_title">ORIGINAL IMAGE</h3>
+            <span class="muted-label" data-i18n="prototype_sample_image">Prototype sample image</span>
+          </div>
+          <div class="modal-image-wrapper">
+            <div class="sample-image-container" id="modalImageContainer">
+              <svg class="sample-plant-svg" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" aria-label="Field scan preview">
+                <rect width="320" height="180" fill="#1b362c"/>
+                <circle cx="160" cy="90" r="70" fill="#244d3d" opacity="0.6"/>
+                <path d="M160 25 C 225 45, 245 110, 160 155 C 75 110, 95 45, 160 25 Z" fill="#3e845c"/>
+                <path d="M160 25 Q 160 90, 160 155" stroke="#68b589" stroke-width="2.2" fill="none"/>
+                <path d="M160 55 Q 185 70, 198 85" stroke="#68b589" stroke-width="1.6" fill="none"/>
+                <path d="M160 80 Q 132 95, 122 110" stroke="#68b589" stroke-width="1.6" fill="none"/>
+                <path d="M160 105 Q 185 120, 192 132" stroke="#68b589" stroke-width="1.6" fill="none"/>
+                <ellipse id="svgDiseaseSpot1" cx="140" cy="75" rx="10" ry="7" fill="#8c5825" opacity="0.9"/>
+                <ellipse id="svgDiseaseSpot2" cx="178" cy="102" rx="8" ry="6" fill="#8c5825" opacity="0.9"/>
+                <rect x="95" y="40" width="130" height="105" fill="none" stroke="#72bd89" stroke-width="1.5" stroke-dasharray="4 2"/>
+                <rect x="95" y="27" width="80" height="14" fill="#72bd89" rx="3"/>
+                <text x="99" y="38" fill="#18352b" font-size="9.5" font-family="sans-serif" font-weight="700">AI ROI 96%</text>
+              </svg>
+              <div class="sample-image-overlay-badge" data-i18n="prototype_image_disclaimer">Prototype sample capture · Offline edge inference</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Soil Sensor Telemetry Section (Active ONLY for Soil-only records) -->
+        <section class="modal-section" id="modalSoilSection" hidden>
+          <div class="section-row modal-sec-header">
+            <h3 data-i18n="soil_assessment_title">SOIL ASSESSMENT</h3>
+            <span class="muted-label" data-i18n="prototype_sensor_telemetry">Sensor telemetry</span>
+          </div>
+          <div class="soil-specs-grid">
+            <div class="soil-spec-card"><span class="spec-label" data-i18n="nitrogen">Nitrogen</span><strong id="modalSoilN">Low</strong><small class="spec-hint">N Reading</small></div>
+            <div class="soil-spec-card"><span class="spec-label" data-i18n="phosphorus">Phosphorus</span><strong id="modalSoilP">Normal</strong><small class="spec-hint">P Reading</small></div>
+            <div class="soil-spec-card"><span class="spec-label" data-i18n="potassium">Potassium</span><strong id="modalSoilK">Good</strong><small class="spec-hint">K Reading</small></div>
+            <div class="soil-spec-card"><span class="spec-label" data-i18n="soil_ph">Soil pH</span><strong id="modalSoilPh">6.5</strong><small class="spec-hint">Target 6.0–7.0</small></div>
+            <div class="soil-spec-card"><span class="spec-label" data-i18n="soil_moisture">Moisture</span><strong id="modalSoilMoisture">42%</strong><small class="spec-hint">Optimal 45–65%</small></div>
+            <div class="soil-spec-card"><span class="spec-label" data-i18n="ec">EC</span><strong id="modalSoilEc">0.62 mS/cm</strong><small class="spec-hint">Conductivity</small></div>
+            <div class="soil-spec-card"><span class="spec-label" data-i18n="organic_carbon">Organic Carbon</span><strong id="modalSoilCarbon">0.70%</strong><small class="spec-hint">Soil organic</small></div>
+          </div>
+        </section>
+
+        <!-- Structured Results Cards -->
+        <section class="modal-section">
+          <div class="section-row modal-sec-header">
+            <h3 data-i18n="modal_results_title">ANALYSIS RESULTS</h3>
+            <span class="muted-label" data-i18n="sample_inference">Sample inference</span>
+          </div>
+          <div class="results-display-grid" id="modalResultsGrid">
+            <!-- Dynamic result cards populated by app.js -->
+          </div>
+        </section>
+
+        <!-- Farmer-Friendly Overall Summary -->
+        <section class="modal-section overall-analysis-card">
+          <div class="overall-header">
+            <span class="overall-icon" aria-hidden="true">🌾</span>
+            <div>
+              <h3 data-i18n="overall_field_analysis_title">OVERALL FIELD ANALYSIS</h3>
+              <p class="overall-text" id="modalOverallSummary">Wheat detected with possible signs of disease. Nitrogen levels are low.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Priority Actions (3 sample items) -->
+        <section class="modal-section priority-actions-box">
+          <h3 data-i18n="priority_actions_title">PRIORITY ACTIONS</h3>
+          <ol class="priority-actions-list" id="modalPriorityList">
+            <li><span>1</span><p>Inspect affected plants.</p></li>
+            <li><span>2</span><p>Review nitrogen levels.</p></li>
+            <li><span>3</span><p>Monitor the affected field area.</p></li>
+          </ol>
+        </section>
+
+        <!-- Future TTS Controls Placeholder -->
+        <section class="modal-section tts-section">
+          <div class="tts-header">
+            <div>
+              <h3 data-i18n="tts_title">LISTEN TO SUMMARY</h3>
+              <p class="panel-copy" data-i18n="tts_help">Voice narration for farmer-friendly field summary and priority actions.</p>
+            </div>
+            <div class="tts-button-row">
+              <button type="button" class="secondary-button tts-btn" id="btnTtsEn" data-i18n="btn_tts_en">🔊 English</button>
+              <button type="button" class="secondary-button tts-btn" id="btnTtsHi" data-i18n="btn_tts_hi">🔊 हिंदी</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="js/socket.io.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
