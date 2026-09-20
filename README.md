@@ -36,7 +36,7 @@ cp .env.example .env
 Then edit `.env`:
 
 - **`KISAN_SECRET_KEY`** — any long random string; used to sign sessions. Generate one with `python -c "import secrets; print(secrets.token_hex(32))"`. If unset, the server uses a random per-boot key and warns on startup.
-- **`KISAN_API_TOKEN`** *(optional)* — when set, `POST /api/sensors`, `/api/disease`, and `/api/profile` require an `Authorization: Bearer <token>` header.
+- **`KISAN_API_TOKEN`** *(optional)* — when set, non-auth writes (`POST /api/sensors`, `/api/disease`, `/api/profile`, and `/api/models/*`) require an `Authorization: Bearer <token>` header. A signed-in dashboard session also grants write access.
 - **`OPENWEATHER_API_KEY`** / **`OPENWEATHER_CITY`** *(optional)* — live temperature/humidity/rainfall from OpenWeatherMap, with automatic fallback to local sensors when offline (see Production notes).
 
 ### 4. Start the edge server
@@ -122,11 +122,13 @@ They complement each other; none replaces a soil laboratory report, field scouti
 
 ## Model implementation and verification
 
-All three models have been reimplemented into the active Flask application:
+All three models are available through the active Flask application:
 
-1. Disease scan: browser upload -> `POST /api/disease` -> ONNX inference -> SQLite scan history -> Socket.IO update -> dashboard result.
-2. Crop recommendation: Arduino/API telemetry -> `MLService.recommend_crops` -> `GET /api/recommendations` -> ranked crops in the dashboard.
-3. Soil fertility: Arduino/API telemetry -> `MLService.assess_soil_fertility` -> `GET /api/soil` and `/api/farm` -> soil-intelligence panel.
+1. Disease scan: browser upload -> `POST /api/disease` -> ONNX inference -> SQLite scan and analysis history -> Socket.IO update -> dashboard result.
+2. Crop recommendation: AI Models form -> `POST /api/models/crop` -> `MLService.recommend_crops` -> SQLite analysis/activity history -> ranked crops and speech-ready result.
+3. Soil fertility: AI Models form -> `POST /api/models/soil` -> `MLService.assess_soil_fertility` -> SQLite analysis/activity history -> fertility result.
+4. Speech: a model result is sent to `POST /api/tts`, then played locally with the browser's offline `speechSynthesis` engine (English or Hindi).
+5. Accounts: signup/login uses a SQLite `users` table, Werkzeug password hashing, and a signed Flask session. Guest model runs remain available on a trusted local device.
 
 Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the respective local model from its included training dataset.
 
@@ -142,12 +144,20 @@ Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the
 | `GET /api/health` | Operational health: model readiness, sensor freshness, and database status. |
 | `GET /api/climate`, `/api/alerts`, `/api/history` | Supporting local dashboard data. |
 | `POST /api/profile` | Update farm profile (requires `KISAN_API_TOKEN` if configured). |
+| `GET /api/models` | List the installed disease, crop, and soil models. |
+| `POST /api/models/crop`, `/api/models/soil` | Run a selected tabular model and persist the analysis/activity result. |
+| `POST /api/tts` | Validate model output and return the browser voice/language payload. |
+| `POST /api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `GET /api/auth/me` | Create a user, manage the signed session, or inspect the current user. |
+| `GET /api/activity` | Recent persisted model, scan, account, and profile activity. |
+| `GET /api/analyses`, `/api/analyses/<id>` | List and open saved model analyses. |
 
 ## API contract: inputs and expected behaviour
 
 Base URL: `http://<pi-ip>:3000`. All read endpoints return JSON and require no
-authentication. When `KISAN_API_TOKEN` is configured, every write endpoint
-requires this header:
+authentication. Signup, login, logout, and TTS are not token-gated. When
+`KISAN_API_TOKEN` is configured, sensor, disease, profile, and model-run write
+endpoints require this header unless the request has a valid signed dashboard
+session:
 
 ```http
 Authorization: Bearer <KISAN_API_TOKEN>
@@ -235,6 +245,9 @@ weather cache, and broadcasts the updated farm payload.
 | `GET /api/recommendations` | None | Farmer-facing action plus the crop model's top three ranked crops and active alerts. |
 | `GET /api/alerts` | None | Alerts derived from the current enriched telemetry. |
 | `GET /api/history` | None | Up to 30 stored telemetry records, oldest to newest. |
+| `GET /api/activity` | None | Up to 40 recent persisted actions, newest first. |
+| `GET /api/analyses` | None | Up to 50 saved disease, crop, and soil analyses, newest first. |
+| `GET /api/analyses/<id>` | Analysis id | One saved analysis with its input and result JSON for the History page. |
 | `GET /api/health` | None | Service status, uptime, readiness of all models, sensor freshness, and SQLite health. Use this for deployment monitoring. |
 
 ### End-to-end data flow
@@ -256,7 +269,7 @@ SQLite state is created under `runtime/kisan_mitra.db`. Detailed source, licensi
 - **Leaf scans outside the 15 trained classes are rejected, not guessed.** The model is a closed-set classifier, so without a guard it reports a tomato disease for almost any image (a blank white image scored 99% `Tomato_Late_blight`). `MLService.diagnose` now rejects scans whose penultimate-layer features fall outside the envelope of the predicted class (calibrated by `python train_disease_ood.py`; see [MODEL_SOURCES.md](MODEL_SOURCES.md)); `/api/health` reports the gate's readiness under `models.disease.ood`. The model itself only knows pepper, potato, and tomato — supported-crop options and a swap procedure are documented in [MODEL_SOURCES.md](MODEL_SOURCES.md).
 - **Use 64-bit Raspberry Pi OS (aarch64).** `onnxruntime` no longer publishes wheels for 32-bit ARM (armv7l), so `pip install -r requirements.txt` fails on 32-bit Pi OS. On a Pi 4 expect roughly **1-3 seconds per leaf scan** with the EfficientNetV2 model; scans are queued through a single background worker so the dashboard stays responsive. The Random Forest models are effectively instant.
 - **Set `KISAN_SECRET_KEY`** (any long random string). Without it the server falls back to a random per-boot key and warns on startup.
-- **Set `KISAN_API_TOKEN` to protect write endpoints.** When set, `POST /api/sensors`, `POST /api/disease`, and `POST /api/profile` require an `Authorization: Bearer <token>` header. The read-only dashboard is intentionally open so farm staff can view it without credentials. To scan or change the location from the dashboard, enter the token under **System -> Write access**; it is kept only in that browser tab's session storage.
+- **Set `KISAN_API_TOKEN` to protect write endpoints.** When set, `POST /api/sensors`, `POST /api/disease`, `POST /api/profile`, and `POST /api/models/*` require an `Authorization: Bearer <token>` header unless the dashboard has a valid signed-in session. The read-only dashboard is intentionally open so farm staff can view it without credentials. To use protected device writes from the dashboard, enter the token under **System -> Write access**; it is kept only in that browser tab's session storage.
 - **Optional live weather (offline-safe):** set `OPENWEATHER_API_KEY` in `.env` to enrich the dashboard with current temperature/humidity/rainfall from OpenWeatherMap. The weather location is resolved in this order: **GPS coordinates from the Arduino's telemetry, then the farm location saved on the dashboard** (System -> Farm location), then `OPENWEATHER_CITY` as the fallback. Fetches are cached for 30 minutes and time out after 3 seconds; if the request fails for any reason (offline, revoked key, rate limit) the app silently falls back to the local sensor readings, so the farm keeps working with no internet at all. The dashboard connection area shows the active source and city.
 - The legacy Streamlit application and its committed third-party API keys (Roboflow, OpenWeatherMap, Google Gemini) were removed in this branch. If you ever used those keys, **revoke/rotate them** in the provider consoles; they are no longer referenced anywhere in the codebase.
 - Sensor and scan history is stored in `runtime/kisan_mitra.db` (auto-created, git-ignored). The dashboard shows clearly labelled demo telemetry until real readings arrive.

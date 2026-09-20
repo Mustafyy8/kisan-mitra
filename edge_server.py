@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import secrets
 import sqlite3
 import threading
@@ -24,8 +25,9 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory, session
 from flask_socketio import SocketIO
+from werkzeug.security import check_password_hash, generate_password_hash
 from ml_service import MLService
 
 load_dotenv()
@@ -57,6 +59,13 @@ _weather_cache: dict[str, Any] = {}
 
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 app.config["SECRET_KEY"] = secret_key
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = False  # LAN/HTTP on the Pi; HTTPS is not assumed.
+
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,32}$")
+ANALYSIS_LIMIT = 200
+ACTIVITY_LIMIT = 200
 # Leaf scans are resized before inference; accepting very large uploads only
 # wastes memory on a small edge device. Flask rejects larger bodies with 413.
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
@@ -246,6 +255,31 @@ def initialise_database() -> None:
                 created_at TEXT NOT NULL,
                 result TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS analyses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                user_id INTEGER,
+                analysis_type TEXT NOT NULL,
+                model TEXT NOT NULL,
+                input_json TEXT NOT NULL,
+                result_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS activity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                user_id INTEGER,
+                action TEXT NOT NULL,
+                tool TEXT NOT NULL,
+                model TEXT,
+                summary TEXT NOT NULL,
+                analysis_id INTEGER
+            );
         """)
         # Migrate databases created before the location column existed.
         columns = [row["name"] for row in connection.execute("PRAGMA table_info(farm_profile)")]
@@ -261,6 +295,167 @@ def profile() -> dict[str, Any]:
     with closing(db()) as connection:
         row = connection.execute("SELECT name, crop, acreage, location FROM farm_profile WHERE id = 1").fetchone()
     return dict(row)
+
+
+def current_user_id() -> int | None:
+    try:
+        uid = session.get("user_id")
+        return int(uid) if uid is not None else None
+    except (TypeError, ValueError, RuntimeError):
+        return None
+
+
+def user_by_id(user_id: int | None) -> dict[str, Any] | None:
+    if not user_id:
+        return None
+    with closing(db()) as connection:
+        row = connection.execute("SELECT id, username, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def public_user(user: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not user:
+        return None
+    return {"id": user["id"], "username": user["username"]}
+
+
+def record_analysis(analysis_type: str, model: str, input_data: dict[str, Any], result: dict[str, Any]) -> int:
+    created = now()
+    uid = current_user_id()
+    with closing(db()) as connection:
+        cursor = connection.execute(
+            "INSERT INTO analyses (created_at, user_id, analysis_type, model, input_json, result_json) VALUES (?, ?, ?, ?, ?, ?)",
+            (created, uid, analysis_type, model, json.dumps(input_data), json.dumps(result)),
+        )
+        analysis_id = int(cursor.lastrowid)
+        connection.execute(
+            "DELETE FROM analyses WHERE id NOT IN (SELECT id FROM analyses ORDER BY id DESC LIMIT ?)",
+            (ANALYSIS_LIMIT,),
+        )
+    return analysis_id
+
+
+def record_activity(action: str, tool: str, summary: str, model: str | None = None, analysis_id: int | None = None) -> None:
+    with closing(db()) as connection:
+        connection.execute(
+            "INSERT INTO activity (created_at, user_id, action, tool, model, summary, analysis_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (now(), current_user_id(), action, tool, model, summary[:400], analysis_id),
+        )
+        connection.execute(
+            "DELETE FROM activity WHERE id NOT IN (SELECT id FROM activity ORDER BY id DESC LIMIT ?)",
+            (ACTIVITY_LIMIT,),
+        )
+
+
+def analysis_row(row: sqlite3.Row) -> dict[str, Any]:
+    user = user_by_id(row["user_id"])
+    return {
+        "id": row["id"],
+        "created_at": row["created_at"],
+        "analysis_type": row["analysis_type"],
+        "model": row["model"],
+        "input": json.loads(row["input_json"]),
+        "result": json.loads(row["result_json"]),
+        "user": public_user(user),
+    }
+
+
+def activity_row(row: sqlite3.Row) -> dict[str, Any]:
+    user = user_by_id(row["user_id"])
+    return {
+        "id": row["id"],
+        "created_at": row["created_at"],
+        "action": row["action"],
+        "tool": row["tool"],
+        "model": row["model"],
+        "summary": row["summary"],
+        "analysis_id": row["analysis_id"],
+        "user": public_user(user),
+    }
+
+
+def speech_for_disease(result: dict[str, Any]) -> str:
+    if result.get("recognized") is False:
+        return f"{result.get('disease', 'Not recognized')}. {result.get('treatment', '')}"
+    label = "Healthy leaf" if result.get("healthy") else str(result.get("disease") or "Scan complete")
+    confidence = result.get("confidence")
+    conf = f" Confidence {confidence} percent." if confidence is not None else ""
+    return f"{label}.{conf} {result.get('treatment', '')}".strip()
+
+
+def speech_for_crops(crops: list[dict[str, Any]], recommendation: dict[str, str]) -> str:
+    ranking = ", ".join(f"{item['crop']} {item['confidence']} percent" for item in crops[:3])
+    return f"{recommendation.get('title', 'Crop recommendation')}. {recommendation.get('message', '')} Top matches: {ranking}.".strip()
+
+
+def speech_for_soil(assessment: dict[str, Any], extras: dict[str, Any] | None = None) -> str:
+    if assessment.get("status") != "ready":
+        return "The soil fertility model is unavailable."
+    confidence = assessment.get("confidence")
+    conf = f" Confidence {confidence} percent." if confidence is not None else ""
+    extra = ""
+    if extras:
+        extra = (
+            f" Nitrogen {extras.get('n')}, phosphorus {extras.get('p')}, "
+            f"potassium {extras.get('k')}, pH {extras.get('ph')}."
+        )
+    return f"Soil is {assessment.get('fertility')}.{conf}{extra}".strip()
+
+
+def overlay_telemetry(payload: dict[str, Any] | None) -> dict[str, Any]:
+    """Latest telemetry with optional numeric overlays from a model form."""
+    data = current_telemetry()
+    if not payload:
+        return data
+    npk = dict(data["npk"])
+    incoming_npk = payload.get("npk") if isinstance(payload.get("npk"), dict) else {}
+    for key in ("n", "p", "k"):
+        if key in payload or key in incoming_npk:
+            raw = incoming_npk[key] if key in incoming_npk else payload.get(key)
+            value = float(raw)
+            if not math.isfinite(value) or not 0 <= value <= 10_000:
+                raise ValueError(f"{key} must be between 0 and 10000")
+            npk[key] = value
+    data["npk"] = npk
+    for key in ("moisture", "temperature", "humidity", "ph", "ec", "organic_carbon", "rainfall"):
+        if key not in payload:
+            continue
+        value = float(payload[key])
+        low, high = TELEMETRY_LIMITS[key]
+        if not math.isfinite(value) or not low <= value <= high:
+            raise ValueError(f"{key} must be between {low:g} and {high:g}")
+        data[key] = value
+    return data
+
+
+def available_models() -> list[dict[str, Any]]:
+    status = ml.model_status()
+    return [
+        {
+            "id": "disease",
+            "name": "Leaf disease detection",
+            "file": status["disease"]["file"],
+            "ready": status["disease"]["ready"],
+            "input": "image",
+            "description": "Upload a close-up pepper, potato, or tomato leaf photo.",
+        },
+        {
+            "id": "crop",
+            "name": "Crop recommendation",
+            "file": status["crop"]["file"],
+            "ready": status["crop"]["ready"],
+            "input": "sensors",
+            "description": "Ranks crops from N, P, K, temperature, humidity, pH, and rainfall.",
+        },
+        {
+            "id": "soil",
+            "name": "Soil fertility",
+            "file": status["soil"]["file"],
+            "ready": status["soil"]["ready"],
+            "input": "sensors",
+            "description": "Classifies fertility from N, P, K, pH, EC, and organic carbon.",
+        },
+    ]
 
 
 def alerts_for(data: dict[str, Any]) -> list[dict[str, str]]:
@@ -376,6 +571,8 @@ def dashboard_payload() -> dict[str, Any]:
         "edge": {"online": True, "model": "PlantVillage EfficientNetV2",
                  "inference_ms": latest_scan["inference_ms"] if latest_scan else None,
                  "confidence": latest_scan["confidence"] if latest_scan else None, "cloud_required": False},
+        "user": public_user(user_by_id(current_user_id())),
+        "models": available_models(),
     }
 
 
@@ -446,12 +643,14 @@ def sensors() -> Response:
 
 
 def require_token() -> Response | None:
-    """Return a 401 response when an API token is configured but not supplied."""
+    """Return a 401 when writes need a session or API token and neither is present."""
+    if current_user_id():
+        return None
     if not API_TOKEN:
         return None
     if request.headers.get("Authorization") == f"Bearer {API_TOKEN}":
         return None
-    return jsonify({"error": "A valid KISAN_API_TOKEN bearer token is required"}), 401
+    return jsonify({"error": "Sign in or provide a valid KISAN_API_TOKEN bearer token"}), 401
 
 
 @app.post("/api/sensors")
@@ -516,6 +715,21 @@ def scan_disease() -> Response:
         return jsonify({"error": "Scan queue is busy; try again in a moment"}), 503
     with closing(db()) as connection:
         connection.execute("INSERT INTO disease_scans (created_at, result) VALUES (?, ?)", (now(), json.dumps(result)))
+    filename = image.filename or "leaf"
+    speech = speech_for_disease(result)
+    analysis_id = record_analysis(
+        "disease",
+        "plant_disease.onnx",
+        {"filename": filename[:120], "source": "leaf-scan"},
+        {**result, "speech": speech},
+    )
+    summary = result.get("disease") or result.get("label") or "Leaf scan"
+    if result.get("recognized") is False:
+        summary = "Leaf not recognized"
+    elif result.get("healthy"):
+        summary = "Healthy leaf"
+    record_activity("disease_scan", "field_tools", summary, model="plant_disease.onnx", analysis_id=analysis_id)
+    result = {**result, "analysis_id": analysis_id, "speech": speech}
     socketio.emit("telemetry", dashboard_payload())
     return jsonify(result), 201
 
@@ -546,6 +760,8 @@ def update_profile() -> Response:
     if unauthorized:
         return unauthorized
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON object required"}), 400
     current = profile()
     # Each field defaults to its current value; explicit null means "leave it".
     name = current["name"]
@@ -573,8 +789,189 @@ def update_profile() -> Response:
     # A new location changes which city weather is fetched for: drop the cache.
     with weather_lock:
         _weather_cache.clear()
+    record_activity("profile_update", "system", "Updated the farm profile.")
     socketio.emit("telemetry", dashboard_payload())
     return jsonify({"ok": True, "farm": profile()})
+
+
+def parse_credentials() -> tuple[Response, int] | tuple[str, str]:
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON body with username and password is required"}), 400
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    if not USERNAME_RE.match(username):
+        return jsonify({"error": "Username must be 3–32 letters, numbers, or underscores"}), 422
+    if len(password) < 8 or len(password) > 128:
+        return jsonify({"error": "Password must be 8–128 characters"}), 422
+    return username, password
+
+
+@app.post("/api/auth/signup")
+def signup() -> Response:
+    parsed = parse_credentials()
+    if isinstance(parsed[0], Response):
+        return parsed
+    username, password = parsed
+    password_hash = generate_password_hash(password)
+    try:
+        with closing(db()) as connection:
+            cursor = connection.execute(
+                "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+                (username, password_hash, now()),
+            )
+            user_id = int(cursor.lastrowid)
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "That username is already taken"}), 409
+    session.clear()
+    session["user_id"] = user_id
+    session["username"] = username
+    record_activity("signup", "account", f"Created account {username}.")
+    return jsonify({"ok": True, "user": {"id": user_id, "username": username}}), 201
+
+
+@app.post("/api/auth/login")
+def login() -> Response:
+    parsed = parse_credentials()
+    if isinstance(parsed[0], Response):
+        return parsed
+    username, password = parsed
+    with closing(db()) as connection:
+        row = connection.execute(
+            "SELECT id, username, password_hash FROM users WHERE username = ? COLLATE NOCASE",
+            (username,),
+        ).fetchone()
+    if row is None or not check_password_hash(row["password_hash"], password):
+        return jsonify({"error": "Incorrect username or password"}), 401
+    session.clear()
+    session["user_id"] = int(row["id"])
+    session["username"] = row["username"]
+    record_activity("login", "account", f"Signed in as {row['username']}.")
+    return jsonify({"ok": True, "user": {"id": row["id"], "username": row["username"]}})
+
+
+@app.post("/api/auth/logout")
+def logout() -> Response:
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@app.get("/api/auth/me")
+def auth_me() -> Response:
+    user = user_by_id(current_user_id())
+    if not user:
+        return jsonify({"user": None})
+    return jsonify({"user": public_user(user)})
+
+
+@app.get("/api/models")
+def list_models() -> Response:
+    return jsonify({"models": available_models()})
+
+
+@app.post("/api/models/crop")
+def run_crop_model() -> Response:
+    unauthorized = require_token()
+    if unauthorized:
+        return unauthorized
+    payload = request.get_json(silent=True)
+    if payload is None:
+        payload = {}
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON object of soil and climate values required"}), 400
+    try:
+        data = overlay_telemetry(payload if isinstance(payload, dict) else {})
+    except (TypeError, ValueError) as error:
+        return jsonify({"error": f"Invalid inputs: {error}"}), 422
+    crops = crop_recommendations_for(data)
+    recommendation = recommendation_for(data, crops)
+    result = {"crops": crops, "recommendation": recommendation, "speech": speech_for_crops(crops, recommendation)}
+    inputs = {
+        "n": data["npk"]["n"], "p": data["npk"]["p"], "k": data["npk"]["k"],
+        "temperature": data["temperature"], "humidity": data["humidity"], "ph": data["ph"],
+        "rainfall": data["rainfall"],
+    }
+    analysis_id = record_analysis("crop", "crop_recommendation.joblib", inputs, result)
+    top = crops[0]["crop"] if crops else "no ranking"
+    record_activity("crop_recommendation", "ai_models", f"Recommended {top}.", model="crop_recommendation.joblib", analysis_id=analysis_id)
+    result["analysis_id"] = analysis_id
+    return jsonify(result), 201
+
+
+@app.post("/api/models/soil")
+def run_soil_model() -> Response:
+    unauthorized = require_token()
+    if unauthorized:
+        return unauthorized
+    payload = request.get_json(silent=True)
+    if payload is None:
+        payload = {}
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON object of soil values required"}), 400
+    try:
+        data = overlay_telemetry(payload if isinstance(payload, dict) else {})
+    except (TypeError, ValueError) as error:
+        return jsonify({"error": f"Invalid inputs: {error}"}), 422
+    assessment = soil_assessment_for(data)
+    extras = {"n": data["npk"]["n"], "p": data["npk"]["p"], "k": data["npk"]["k"], "ph": data["ph"],
+              "ec": data["ec"], "organic_carbon": data["organic_carbon"]}
+    result = {"fertility": assessment, "inputs": extras, "speech": speech_for_soil(assessment, extras)}
+    analysis_id = record_analysis("soil", "soil_fertility.joblib", extras, result)
+    summary = assessment.get("fertility") or "Soil analysis"
+    record_activity("soil_analysis", "ai_models", f"Soil classified as {summary}.", model="soil_fertility.joblib", analysis_id=analysis_id)
+    result["analysis_id"] = analysis_id
+    return jsonify(result), 201
+
+
+@app.get("/api/activity")
+def activity() -> Response:
+    with closing(db()) as connection:
+        rows = connection.execute(
+            "SELECT id, created_at, user_id, action, tool, model, summary, analysis_id FROM activity ORDER BY id DESC LIMIT 40"
+        ).fetchall()
+    return jsonify([activity_row(row) for row in rows])
+
+
+@app.get("/api/analyses")
+def analyses() -> Response:
+    with closing(db()) as connection:
+        rows = connection.execute(
+            "SELECT id, created_at, user_id, analysis_type, model, input_json, result_json FROM analyses ORDER BY id DESC LIMIT 50"
+        ).fetchall()
+    return jsonify([analysis_row(row) for row in rows])
+
+
+@app.get("/api/analyses/<int:analysis_id>")
+def analysis_detail(analysis_id: int) -> Response:
+    with closing(db()) as connection:
+        row = connection.execute(
+            "SELECT id, created_at, user_id, analysis_type, model, input_json, result_json FROM analyses WHERE id = ?",
+            (analysis_id,),
+        ).fetchone()
+    if not row:
+        return jsonify({"error": "Analysis not found"}), 404
+    return jsonify(analysis_row(row))
+
+
+@app.post("/api/tts")
+def text_to_speech() -> Response:
+    """Prepare model output for speech. Playback uses the browser Speech Synthesis API."""
+    payload = request.get_json(silent=True) or {}
+    text = str(payload.get("text") or "").strip()
+    lang = str(payload.get("lang") or "en").lower()
+    if lang not in {"en", "hi"}:
+        return jsonify({"error": "lang must be en or hi"}), 422
+    if not text:
+        return jsonify({"error": "Provide the result text to speak"}), 422
+    if len(text) > 4000:
+        return jsonify({"error": "Text is too long to speak"}), 422
+    return jsonify({
+        "ok": True,
+        "text": text,
+        "lang": lang,
+        "voice_lang": "hi-IN" if lang == "hi" else "en-IN",
+        "engine": "speechSynthesis",
+    })
 
 
 @socketio.on("connect")
