@@ -1,6 +1,6 @@
 # KISAN MITRA - offline-first farm intelligence
 
-KISAN MITRA is a Raspberry Pi-friendly farm dashboard. It accepts local sensor data from an Arduino, runs all predictions on the device, stores farm history in SQLite, and pushes live results to a lightweight browser UI. Internet access is needed only once to install packages and obtain the checked-in model assets; normal operation is fully local.
+KISAN MITRA is a Raspberry Pi-friendly farm dashboard. It accepts local sensor data from an Arduino, runs its core predictions on the device, stores farm history and uploaded analysis thumbnails in SQLite-backed local storage, and pushes live results to a lightweight browser UI. Disease, crop, and soil inference remain available offline. An optional Gemini key enables cloud explanations, chat, and the pest-screening prototype; every result is labelled **Cloud AI · Online** or **Edge AI · Offline**.
 
 ## Getting started
 
@@ -38,6 +38,7 @@ Then edit `.env`:
 - **`KISAN_SECRET_KEY`** — any long random string; used to sign sessions. Generate one with `python -c "import secrets; print(secrets.token_hex(32))"`. If unset, the server uses a random per-boot key and warns on startup.
 - **`KISAN_API_TOKEN`** *(optional)* — when set, non-auth writes (`POST /api/sensors`, `/api/disease`, `/api/profile`, and `/api/models/*`) require an `Authorization: Bearer <token>` header. A signed-in dashboard session also grants write access.
 - **`OPENWEATHER_API_KEY`** / **`OPENWEATHER_CITY`** *(optional)* — live temperature/humidity/rainfall from OpenWeatherMap, with automatic fallback to local sensors when offline (see Production notes).
+- **`GEMINI_API_KEY`** / **`GEMINI_MODEL`** *(optional)* — enables cloud agronomy explanations, cloud chat, and prototype pest screening. Local disease/crop/soil models still run first and remain the fallback if Gemini is unavailable.
 
 ### 4. Start the edge server
 
@@ -111,6 +112,7 @@ All three expected ML capabilities are implemented in the same `MLService` inter
 | **Field-fine-tuned EfficientNetV2B0** (`plant_disease.onnx`, trained on PlantVillage + PlantDoc) | 15-class image classification with an out-of-distribution rejection gate | Real-world leaf photos of pepper, potato, and tomato diseases (65.7% on field photos, 94.3% on studio-style scans); returns diagnosis, confidence, and top 3 classes. Scans the model cannot place — other crops, blanks, ambiguous shots — return `"Not recognized"` instead of a made-up tomato diagnosis. | Crops outside its 15 labels, whole-field photos, or definitive pesticide decisions. | About 16 MB on disk; ONNX Runtime is fast and offline but image inference is heavier than tabular models. ~91% of known-class scans pass the gate (size, blank, feature-distance, and softmax-margin checks); the rest are honestly flagged as unrecognized. | You have a leaf photo of a supported crop and need rapid local triage. |
 | **Crop Recommendation Random Forest** (`crop_recommendation.joblib`) | 22-class tabular crop suitability ranking | Ranking candidate crops from N, P, K, temperature, humidity, pH, and rainfall. It performed **99.32% held-out accuracy** using the fixed stratified split in `train_crop_model.py`. | Yield forecasting, market/profit prediction, variety selection, irrigation scheduling, or recommendations without meaningful rainfall/soil readings. It is trained on a compact benchmark dataset, not local farm history. | About 14 MB; extremely fast CPU inference and interpretable feature inputs, but classification confidence is not guaranteed field suitability. | Choosing crop candidates from a current soil-and-climate reading. |
 | **Soil Fertility Random Forest** (`soil_fertility.joblib`) | 3-class tabular fertility classification | Classifying **Less fertile / Fertile / Highly fertile** from N, P, K, pH, EC, and organic carbon; it reached **94.19% held-out accuracy** in `train_soil_model.py`. | Soil texture/taxonomy, micronutrient deficiencies, fertilizer dosage, salinity diagnosis without reliable EC, or decisions outside the source dataset's geography and lab methods. | About 6.2 MB and fast on CPU; it uses six available sensor/lab inputs, so it is practical but less complete than a broad lab panel. | You have calibrated NPK, pH, EC, and organic-carbon measurements and need a broad fertility screening. |
+| **Pest screening prototype** (Gemini, optional) | Open-ended image screening | Producing a cautious visual pest-screening note when cloud AI is configured. | Confirmed pest identification, treatment prescriptions, or offline use. No trained local pest model or validated pest dataset is included yet. | Requires internet and `GEMINI_API_KEY`; clearly marked as a prototype. | You need an early visual lead and will confirm it with local scouting or an agronomist. |
 
 ### Model-selection guide
 
@@ -125,10 +127,12 @@ They complement each other; none replaces a soil laboratory report, field scouti
 All three models are available through the active Flask application:
 
 1. Disease scan: browser upload -> `POST /api/disease` -> ONNX inference -> SQLite scan and analysis history -> Socket.IO update -> dashboard result.
-2. Crop recommendation: AI Models form -> `POST /api/models/crop` -> `MLService.recommend_crops` -> SQLite analysis/activity history -> ranked crops and speech-ready result.
-3. Soil fertility: AI Models form -> `POST /api/models/soil` -> `MLService.assess_soil_fertility` -> SQLite analysis/activity history -> fertility result.
-4. Speech: a model result is sent to `POST /api/tts`, then played locally with the browser's offline `speechSynthesis` engine (English or Hindi).
-5. Accounts: signup/login uses a SQLite `users` table, Werkzeug password hashing, and a signed Flask session. Guest model runs remain available on a trusted local device.
+2. Crop recommendation: AI Models -> `POST /api/models/crop` -> latest persisted Raspberry Pi reading -> `MLService.recommend_crops` -> SQLite analysis/activity history -> ranked crops and speech-ready result.
+3. Soil fertility: AI Models -> `POST /api/models/soil` -> latest persisted Raspberry Pi reading -> `MLService.assess_soil_fertility` -> SQLite analysis/activity history -> fertility result.
+4. Pest screening: image upload -> `POST /api/models/pest` -> optional Gemini image analysis -> saved thumbnail, history, and activity. It returns a clear unavailable response without a configured key.
+5. Speech: a model result is sent to `POST /api/tts`, then played locally with the browser's `speechSynthesis` engine (English or Hindi); Listen and Stop controls are shown together.
+6. Accounts: signup/login uses a SQLite `users` table, Werkzeug password hashing, and a signed Flask session. The landing page exposes authentication while operational navigation is disabled for signed-out users.
+7. Rover: the current page is a visual prototype. Its controls intentionally simulate activity without transmitting commands until a hardware protocol is supplied.
 
 Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the respective local model from its included training dataset.
 
@@ -144,12 +148,14 @@ Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the
 | `GET /api/health` | Operational health: model readiness, sensor freshness, and database status. |
 | `GET /api/climate`, `/api/alerts`, `/api/history` | Supporting local dashboard data. |
 | `POST /api/profile` | Update farm profile (requires `KISAN_API_TOKEN` if configured). |
-| `GET /api/models` | List the installed disease, crop, and soil models. |
-| `POST /api/models/crop`, `/api/models/soil` | Run a selected tabular model and persist the analysis/activity result. |
+| `GET /api/models`, `/api/ai/status` | List local/prototype models and report optional cloud-AI availability. |
+| `POST /api/models/crop`, `/api/models/soil` | Run a selected tabular model from the latest persisted sensor reading and save the result. Explicit JSON inputs remain accepted for API clients. |
+| `POST /api/models/pest` | Run the optional cloud pest-screening prototype from an uploaded image. |
+| `POST /api/chat` | Ask the farm assistant; Gemini is used when configured and a limited local sensor-aware assistant is used offline. |
 | `POST /api/tts` | Validate model output and return the browser voice/language payload. |
 | `POST /api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `GET /api/auth/me` | Create a user, manage the signed session, or inspect the current user. |
 | `GET /api/activity` | Recent persisted model, scan, account, and profile activity. |
-| `GET /api/analyses`, `/api/analyses/<id>` | List and open saved model analyses. |
+| `GET /api/analyses`, `/api/analyses/<id>`, `/api/analyses/<id>/image` | List/open saved analyses and retrieve their uploaded image thumbnail when present. |
 
 ## API contract: inputs and expected behaviour
 

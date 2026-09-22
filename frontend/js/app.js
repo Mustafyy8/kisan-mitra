@@ -6,7 +6,7 @@ const setText = (id, value) => { const node = $(id); if (node) node.textContent 
 const COPY = {
   en: {
     brand_tag: "Local farm intelligence", nav_overview: "Overview", nav_field: "Field tools", nav_field_short: "Field", nav_system: "System",
-    nav_models: "AI Models", nav_models_short: "Models", nav_history: "History",
+    nav_models: "AI Models", nav_models_short: "Models", nav_history: "History", nav_chat: "Chatbot", chat_title: "Ask Kisan Mitra", chat_intro: "Cloud answers when available, with local sensor guidance offline.", chat_empty: "Ask about your sensors, soil, crops, or leaf scans.", chat_message: "Message", chat_placeholder: "Ask a farm question…", send: "Send", nav_rover: "Rover", rover_title: "Field rover", rover_intro: "Monitor the rover and prepare field commands. Hardware control will connect when the rover protocol is available.", rover_image_pending: "Rover image coming soon", rover_controls: "Movement controls", protocol_pending: "Protocol pending", rover_safe: "Controls are simulated and do not transmit commands.", rover_log: "Prototype activity", rover_empty: "Use a control to preview the command log.", home_title: "One farm system, online or offline", home_intro: "Monitor sensors, analyze crops and leaves, hear results, review history, and connect field robotics from one interface.",
     connecting: "Connecting", live: "Live", offline: "Offline", checking_server: "Checking edge server…", edge_device: "Edge device", sample_data: "Sample data", sensor_data: "Sensor data", weather_data: "Live weather",
     offline_message: "Live updates are unavailable. Showing the last reading.", retry: "Retry", field_health: "Field health", priority: "Priority",
     soil_moisture: "Soil moisture", temperature: "Temperature", humidity: "Humidity", soil_ph: "Soil pH", ph_note: "Optimal 6.0–7.0", optimal: "Optimal", below_range: "Below target", above_range: "Above target", field_sensor: "Field sensor", live_weather: "Live weather", comfortable: "Comfortable", high_check_leaves: "High — check leaves",
@@ -15,7 +15,7 @@ const COPY = {
     crop_matches: "Crop matches", top_three: "Top 3", crop_disclaimer: "Use these rankings as a starting point alongside local agronomic advice.", no_crops: "Recommendations unavailable",
     leaf_scanner: "Disease detection", scanner_help: "Pepper, potato, and tomato. One leaf, close up, in daylight.", choose_photo: "Choose a leaf photo", photo_types: "JPG, PNG, or WEBP · up to 10 MB", remove: "Remove", scan_leaf: "Scan leaf", scanning: "Scanning locally", scan_result: "Scan result", local_private: "Processed locally · photo not stored", select_photo: "Choose a photo before scanning.", bad_file: "Choose a JPG, PNG, or WEBP image up to 10 MB.", scan_failed: "The leaf could not be scanned.", healthy_leaf: "Healthy leaf", not_recognized: "Not recognized", listen: "Listen", listening: "Speaking", tts_unavailable: "Speech is not available in this browser.",
     system: "System", device_status: "Device status", system_intro: "Connection, local models, and farm settings for setup and support.", edge_models: "Installed models", installed_models: "Installed models", local: "Local", disease_model: "Disease model", last_inference: "Last inference", confidence: "Confidence", cloud_required: "Cloud required", yes: "Yes", no: "No", not_run: "Not run yet", models_shortcut: "Run models from the AI Models page.",
-    models_title: "Run a local model", models_intro: "Choose a model, provide an image or sensor values, and hear the result.", model_input: "Model input", run_model: "Run model", running_model: "Running", model_result: "Model result", model_failed: "The model could not be run.", select_model: "Select a model to run.", crop_model: "Crop recommendation", soil_model: "Soil fertility", disease_model_card: "Leaf disease detection",
+    models_title: "Run a model", models_intro: "Choose a model and hear the result.", model_input: "Model input", run_model: "Analyze", running_model: "Running", model_result: "Model result", model_failed: "The model could not be run.", select_model: "Select a model to run.", crop_model: "Crop recommendation", soil_model: "Soil fertility", disease_model_card: "Leaf disease detection", pest_model: "Pest screening prototype", sensor_auto: "Uses the latest Raspberry Pi sensor reading. Connect the sensor before analyzing.", stop: "Stop", theme_toggle: "Toggle dark mode", mode_edge: "Edge AI · Offline", mode_cloud: "Cloud AI · Online",
     recent_activity: "Recent activity", activity_empty: "Activity appears after you run a model or scan a leaf.", activity_count: (n) => `${n} events`,
     analyses_title: "Saved analyses", analyses_intro: "Open any previous disease, crop, or soil result stored on this device.", past_analyses: "Past analyses", analyses_empty: "Run a model to start saving history.", analysis_detail: "Result", select_analysis: "Select an analysis to view it.", analyses_count: (n) => `${n} saved`,
     account: "Account", signed_out: "Signed out", signed_in: "Signed in", account_help: "Create an account to attach your scans and model runs to a name. The farm dashboard stays usable without signing in.", sign_up: "Sign up", sign_in: "Sign in", sign_out: "Sign out", username: "Username", password: "Password", signup_help: "Choose a username and a password of at least 8 characters.", login_help: "Sign in with your farm username and password.", have_account: "Already have an account? Sign in", need_account: "Need an account? Sign up", signed_in_as: (name) => `Signed in as ${name}`,
@@ -27,7 +27,7 @@ const COPY = {
   },
   hi: {
     brand_tag: "स्थानीय खेत जानकारी", nav_overview: "मुख्य", nav_field: "खेत के औज़ार", nav_field_short: "खेत", nav_system: "सिस्टम",
-    nav_models: "AI मॉडल", nav_models_short: "मॉडल", nav_history: "इतिहास",
+    nav_models: "AI मॉडल", nav_models_short: "मॉडल", nav_history: "इतिहास", nav_chat: "चैटबॉट", chat_title: "किसान मित्र से पूछें", chat_intro: "इंटरनेट पर क्लाउड उत्तर और ऑफ़लाइन स्थानीय सेंसर मार्गदर्शन।", chat_empty: "सेंसर, मिट्टी, फसल या पत्ती स्कैन के बारे में पूछें।", chat_message: "संदेश", chat_placeholder: "खेती का सवाल पूछें…", send: "भेजें", nav_rover: "रोवर", rover_title: "खेत रोवर", rover_intro: "रोवर देखें और खेत कमांड तैयार करें। प्रोटोकॉल मिलने पर हार्डवेयर नियंत्रण जुड़ेगा।", rover_image_pending: "रोवर की फोटो जल्द जोड़ी जाएगी", rover_controls: "हलचल नियंत्रण", protocol_pending: "प्रोटोकॉल बाकी", rover_safe: "ये नियंत्रण केवल प्रदर्शन हैं और कमांड नहीं भेजते।", rover_log: "प्रोटोटाइप गतिविधि", rover_empty: "कमांड लॉग देखने के लिए नियंत्रण दबाएं।", home_title: "ऑनलाइन या ऑफ़लाइन, एक खेत प्रणाली", home_intro: "एक ही इंटरफेस से सेंसर देखें, फसल और पत्ती जांचें, परिणाम सुनें, इतिहास देखें और रोवर जोड़ें।",
     connecting: "जुड़ रहा है", live: "लाइव", offline: "ऑफ़लाइन", checking_server: "डिवाइस जांच रहा है…", edge_device: "खेत का डिवाइस", sample_data: "नमूना डेटा", sensor_data: "सेंसर डेटा", weather_data: "लाइव मौसम",
     offline_message: "लाइव अपडेट उपलब्ध नहीं हैं। पिछली रीडिंग दिखाई जा रही है।", retry: "फिर कोशिश करें", field_health: "खेत की सेहत", priority: "आज का काम",
     soil_moisture: "मिट्टी की नमी", temperature: "तापमान", humidity: "हवा की नमी", soil_ph: "मिट्टी का pH", ph_note: "6.0–7.0 सही", optimal: "सही स्तर", below_range: "स्तर कम", above_range: "स्तर ज़्यादा", field_sensor: "खेत का सेंसर", live_weather: "लाइव मौसम", comfortable: "ठीक है", high_check_leaves: "ज़्यादा — पत्तियां देखें",
@@ -36,7 +36,7 @@ const COPY = {
     crop_matches: "फसल सुझाव", top_three: "शीर्ष 3", crop_disclaimer: "इन सुझावों के साथ स्थानीय कृषि विशेषज्ञ की सलाह भी लें।", no_crops: "सुझाव उपलब्ध नहीं",
     leaf_scanner: "रोग पहचान", scanner_help: "मिर्च, आलू और टमाटर। दिन की रोशनी में एक पत्ती की पास से फोटो लें।", choose_photo: "पत्ती की फोटो चुनें", photo_types: "JPG, PNG या WEBP · 10 MB तक", remove: "हटाएं", scan_leaf: "पत्ती स्कैन करें", scanning: "डिवाइस पर जांच जारी", scan_result: "स्कैन परिणाम", local_private: "डिवाइस पर जांच · फोटो सेव नहीं होती", select_photo: "स्कैन से पहले फोटो चुनें।", bad_file: "10 MB तक की JPG, PNG या WEBP फोटो चुनें।", scan_failed: "पत्ती की जांच नहीं हो सकी।", healthy_leaf: "पत्ती स्वस्थ है", not_recognized: "पहचाना नहीं गया", listen: "सुनें", listening: "बोल रहा है", tts_unavailable: "इस ब्राउज़र में आवाज़ उपलब्ध नहीं है।",
     system: "सिस्टम", device_status: "डिवाइस की स्थिति", system_intro: "सेटअप और सहायता के लिए कनेक्शन, स्थानीय मॉडल और खेत की सेटिंग।", edge_models: "इंस्टॉल मॉडल", installed_models: "इंस्टॉल मॉडल", local: "स्थानीय", disease_model: "रोग मॉडल", last_inference: "पिछली जांच", confidence: "भरोसा", cloud_required: "इंटरनेट जरूरी", yes: "हां", no: "नहीं", not_run: "अभी जांच नहीं हुई", models_shortcut: "AI मॉडल पेज से मॉडल चलाएं।",
-    models_title: "स्थानीय मॉडल चलाएं", models_intro: "मॉडल चुनें, फोटो या सेंसर मान दें, और परिणाम सुनें।", model_input: "मॉडल इनपुट", run_model: "मॉडल चलाएं", running_model: "चल रहा है", model_result: "मॉडल परिणाम", model_failed: "मॉडल नहीं चल सका।", select_model: "चलाने के लिए मॉडल चुनें।", crop_model: "फसल सुझाव", soil_model: "मिट्टी की उर्वरता", disease_model_card: "पत्ती रोग पहचान",
+    models_title: "मॉडल चलाएं", models_intro: "मॉडल चुनें और परिणाम सुनें।", model_input: "मॉडल इनपुट", run_model: "जांच करें", running_model: "चल रहा है", model_result: "मॉडल परिणाम", model_failed: "मॉडल नहीं चल सका।", select_model: "चलाने के लिए मॉडल चुनें।", crop_model: "फसल सुझाव", soil_model: "मिट्टी की उर्वरता", disease_model_card: "पत्ती रोग पहचान", pest_model: "कीट जांच प्रोटोटाइप", sensor_auto: "पिछली रास्पबेरी पाई सेंसर रीडिंग इस्तेमाल होगी। जांच से पहले सेंसर जोड़ें।", stop: "रोकें", theme_toggle: "डार्क मोड बदलें", mode_edge: "एज AI · ऑफ़लाइन", mode_cloud: "क्लाउड AI · ऑनलाइन",
     recent_activity: "हाल की गतिविधि", activity_empty: "मॉडल चलाने या पत्ती स्कैन करने के बाद गतिविधि दिखेगी।", activity_count: (n) => `${n} घटनाएं`,
     analyses_title: "सेव जांच", analyses_intro: "इस डिवाइस पर सेव रोग, फसल या मिट्टी के परिणाम खोलें।", past_analyses: "पिछली जांच", analyses_empty: "इतिहास सेव करने के लिए मॉडल चलाएं।", analysis_detail: "परिणाम", select_analysis: "देखने के लिए एक जांच चुनें।", analyses_count: (n) => `${n} सेव`,
     account: "खाता", signed_out: "साइन आउट", signed_in: "साइन इन", account_help: "स्कैन और मॉडल रन को नाम से जोड़ने के लिए खाता बनाएं। बिना साइन इन भी डैशबोर्ड चलता है।", sign_up: "साइन अप", sign_in: "साइन इन", sign_out: "साइन आउट", username: "यूज़रनेम", password: "पासवर्ड", signup_help: "यूज़रनेम और कम से कम 8 अक्षर का पासवर्ड चुनें।", login_help: "अपने खेत के यूज़रनेम और पासवर्ड से साइन इन करें।", have_account: "खाता है? साइन इन करें", need_account: "खाता चाहिए? साइन अप करें", signed_in_as: (name) => `${name} के रूप में साइन इन`,
@@ -116,7 +116,7 @@ function setConnection(mode) {
 }
 
 function activateTab(name, updateHash = true) {
-  const valid = ["overview", "field", "models", "history", "system"].includes(name) ? name : "overview";
+  const valid = ["overview", "models", "chat", "rover", "history", "system"].includes(name) ? name : "overview";
   document.querySelectorAll(".page").forEach((page) => {
     const active = page.id === `page-${valid}`;
     page.hidden = !active;
@@ -135,6 +135,7 @@ function activateTab(name, updateHash = true) {
 }
 
 document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => activateTab(button.dataset.tab)));
+$("brandHome").addEventListener("click", () => activateTab("overview"));
 $("retryBtn").addEventListener("click", () => loadDashboard());
 document.querySelector(".nav").addEventListener("keydown", (event) => {
   if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
@@ -248,6 +249,7 @@ function renderCrops(crops = []) {
 
 function showScan(result) {
   const box = $("scanResult");
+  if (!box) return;
   const recognized = result.recognized !== false;
   box.hidden = false;
   box.classList.toggle("is-good", recognized && result.healthy);
@@ -275,6 +277,7 @@ function typeLabel(type) {
   if (type === "disease") return t("disease_model_card");
   if (type === "crop") return t("crop_model");
   if (type === "soil") return t("soil_model");
+  if (type === "pest") return t("pest_model");
   return type;
 }
 
@@ -317,6 +320,9 @@ function analysisSummary(item) {
   }
   if (item.analysis_type === "crop") {
     return result.crops?.[0]?.crop || result.recommendation?.title || t("crop_model");
+  }
+  if (item.analysis_type === "pest") {
+    return result.summary || result.analysis?.slice(0, 80) || t("pest_model");
   }
   return result.fertility?.fertility || t("soil_model");
 }
@@ -364,6 +370,8 @@ function showAnalysisDetail(item) {
   else if (item.analysis_type === "crop") {
     const crops = (result.crops || []).map((c) => `${c.crop} ${c.confidence}%`).join(", ");
     body.textContent = `${result.recommendation?.title || ""}. ${result.recommendation?.message || ""} ${crops}`.trim();
+  } else if (item.analysis_type === "pest") {
+    body.textContent = result.analysis || result.summary || JSON.stringify(result);
   } else {
     const fert = result.fertility || {};
     body.textContent = fert.fertility ? `${fert.fertility} (${fert.confidence}%)` : JSON.stringify(result);
@@ -371,13 +379,27 @@ function showAnalysisDetail(item) {
   const input = document.createElement("pre");
   input.className = "analysis-input";
   input.textContent = JSON.stringify(item.input || {}, null, 2);
+  const image = item.image_url ? document.createElement("img") : null;
+  if (image) {
+    image.className = "analysis-image";
+    image.src = item.image_url;
+    image.alt = `${typeLabel(item.analysis_type)} upload`;
+    image.loading = "lazy";
+  }
   const listen = document.createElement("button");
   listen.type = "button";
   listen.className = "listen-button";
   listen.innerHTML = `<span>${t("listen")}</span>`;
   lastDetailSpeech = result.speech || body.textContent;
   listen.addEventListener("click", () => speakResult(lastDetailSpeech, ttsLang.detail || language));
-  detail.append(title, meta, body, listen, input);
+  const stop = document.createElement("button");
+  stop.type = "button";
+  stop.className = "secondary-button stop-speech";
+  stop.textContent = t("stop");
+  stop.addEventListener("click", () => window.speechSynthesis?.cancel());
+  detail.append(title, meta);
+  if (image) detail.append(image);
+  detail.append(body, listen, stop, input);
   document.querySelectorAll(".analysis-row").forEach((row) => row.classList.toggle("is-active", Number(row.dataset.id) === item.id));
 }
 
@@ -454,13 +476,12 @@ function renderModelCards(models = state?.models) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `model-card${selectedModel === model.id ? " is-active" : ""}`;
-    button.disabled = model.ready === false;
     const title = document.createElement("b");
-    title.textContent = model.id === "disease" ? t("disease_model_card") : model.id === "crop" ? t("crop_model") : t("soil_model");
+    title.textContent = typeLabel(model.id);
     const copy = document.createElement("span");
     copy.textContent = model.description || "";
     const status = document.createElement("small");
-    status.textContent = model.ready === false ? t("unavailable") : t("local");
+    status.textContent = model.ready === false ? t("unavailable") : model.id === "pest" ? t("mode_cloud") : t("local");
     button.append(title, copy, status);
     button.addEventListener("click", () => selectModel(model.id));
     cards.append(button);
@@ -473,14 +494,18 @@ function selectModel(id) {
   setText("selectedModelLabel", typeLabel(id));
   const image = $("modelImageForm");
   const sensors = $("modelSensorForm");
-  image.hidden = id !== "disease";
-  sensors.hidden = id === "disease";
-  if (id !== "disease") fillModelFields();
+  image.hidden = !["disease", "pest"].includes(id);
+  sensors.hidden = ["disease", "pest"].includes(id);
+  $("runImageModelBtn").querySelector("span").textContent = t(id === "pest" ? "run_model" : "scan_leaf");
+  if (!["disease", "pest"].includes(id)) {
+    $("modelFields").replaceChildren();
+    $("modelSensorForm").querySelector(".sensor-source-note").textContent = t("sensor_auto");
+  }
   $("modelResult").hidden = true;
   $("modelRunStatus").textContent = "";
 }
 
-function showModelResult(title, body, speech, good = true, confidence = "") {
+function showModelResult(title, body, speech, good = true, confidence = "", mode = "edge") {
   const box = $("modelResult");
   box.hidden = false;
   box.classList.toggle("is-good", good);
@@ -489,6 +514,7 @@ function showModelResult(title, body, speech, good = true, confidence = "") {
   setText("modelResultTitle", title);
   setText("modelResultBody", body);
   setText("modelResultConfidence", confidence);
+  setText("modelModeBadge", t(mode === "cloud" ? "mode_cloud" : "mode_edge"));
   lastModelSpeech = speech || `${title}. ${body}`;
 }
 
@@ -508,6 +534,10 @@ function renderAccount() {
     chip.classList.toggle("success", signedIn);
   }
   if (signedIn) setText("signedInAs", t("signed_in_as", currentUser.username));
+  document.body.classList.toggle("guest", !signedIn);
+  if ($("landingPanel")) $("landingPanel").hidden = signedIn;
+  document.querySelectorAll('[data-tab]:not([data-tab="overview"])').forEach((node) => { node.disabled = !signedIn; });
+  if (!signedIn && !$("page-overview").classList.contains("is-active")) activateTab("overview");
 }
 
 function openAuth(mode) {
@@ -591,6 +621,8 @@ function render(data) {
 function applyLanguage() {
   document.documentElement.lang = language === "hi" ? "hi" : "en";
   document.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = t(node.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => { node.placeholder = t(node.dataset.i18nPlaceholder); });
+  if ($("themeToggle")) $("themeToggle").setAttribute("aria-label", t("theme_toggle"));
   $("locationInput").placeholder = t("location_placeholder"); $("tokenInput").placeholder = t("token_placeholder");
   [["langEn", "en"], ["langHi", "hi"]].forEach(([id, value]) => { const active = language === value; $(id).classList.toggle("is-active", active); $(id).setAttribute("aria-pressed", String(active)); });
   if (state) {
@@ -677,12 +709,53 @@ $("tokenForm").addEventListener("submit", (event) => {
   setText("tokenStatus", value ? t("token_set") : t("token_cleared")); $("tokenInput").value = "";
 });
 
+$("chatForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = $("chatInput");
+  const message = input.value.trim();
+  if (!message) return;
+  const log = $("chatLog");
+  if (log.querySelector(".empty")) log.replaceChildren();
+  const user = document.createElement("p");
+  user.className = "chat-message user";
+  user.textContent = message;
+  log.append(user);
+  input.value = "";
+  try {
+    const result = await api("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) }, 20000);
+    const reply = document.createElement("div");
+    reply.className = "chat-message assistant";
+    const mode = document.createElement("small");
+    mode.textContent = t(result.mode === "cloud" ? "mode_cloud" : "mode_edge");
+    const text = document.createElement("p");
+    text.textContent = result.answer;
+    const listen = document.createElement("button");
+    listen.type = "button";
+    listen.className = "listen-button";
+    listen.textContent = t("listen");
+    listen.addEventListener("click", () => speakResult(result.answer, language));
+    reply.append(mode, text, listen);
+    log.append(reply);
+  } catch (error) {
+    showToast(errorMessage(error), true);
+  }
+});
+
 function applyAuthCopy() {
   if ($("authModal")?.hidden === false) openAuth(authMode);
 }
 
 $("scanListenBtn")?.addEventListener("click", () => speakResult(lastScanSpeech, ttsLang.scan));
 $("modelListenBtn")?.addEventListener("click", () => speakResult(lastModelSpeech, ttsLang.model));
+document.querySelectorAll(".result-actions").forEach((actions) => {
+  const stop = document.createElement("button");
+  stop.type = "button";
+  stop.className = "secondary-button stop-speech";
+  stop.dataset.i18n = "stop";
+  stop.textContent = t("stop");
+  stop.addEventListener("click", () => window.speechSynthesis?.cancel());
+  actions.append(stop);
+});
 document.querySelectorAll("[data-tts-lang]").forEach((button) => {
   button.addEventListener("click", () => {
     const target = button.dataset.for;
@@ -693,6 +766,8 @@ document.querySelectorAll("[data-tts-lang]").forEach((button) => {
 
 $("openSignupBtn")?.addEventListener("click", () => openAuth("signup"));
 $("openLoginBtn")?.addEventListener("click", () => openAuth("login"));
+$("landingSignup")?.addEventListener("click", () => openAuth("signup"));
+$("landingLogin")?.addEventListener("click", () => openAuth("login"));
 $("closeAuthBtn")?.addEventListener("click", closeAuth);
 $("authModal")?.addEventListener("click", (event) => { if (event.target === $("authModal")) closeAuth(); });
 $("switchAuthBtn")?.addEventListener("click", () => openAuth(authMode === "login" ? "signup" : "login"));
@@ -734,10 +809,10 @@ $("runModelBtn")?.closest("form")?.addEventListener("submit", async (event) => {
     const result = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formValues($("modelSensorForm"))) });
     if (selectedModel === "crop") {
       const top = result.crops?.[0];
-      showModelResult(result.recommendation?.title || t("crop_model"), `${result.recommendation?.message || ""} ${(result.crops || []).map((c) => `${c.crop} ${c.confidence}%`).join(", ")}`.trim(), result.speech, true, top ? `${top.confidence}%` : "");
+      showModelResult(result.recommendation?.title || t("crop_model"), `${result.recommendation?.message || ""} ${(result.crops || []).map((c) => `${c.crop} ${c.confidence}%`).join(", ")} ${result.cloud_analysis || ""}`.trim(), result.speech, true, top ? `${top.confidence}%` : "", result.mode);
     } else {
       const fert = result.fertility || {};
-      showModelResult(fert.fertility || t("soil_model"), result.speech || "", result.speech, fert.status === "ready", fert.confidence != null ? `${fert.confidence}%` : "");
+      showModelResult(fert.fertility || t("soil_model"), result.speech || "", result.speech, fert.status === "ready", fert.confidence != null ? `${fert.confidence}%` : "", result.mode);
     }
     renderActivity(await api("/api/activity"));
     renderAnalyses(await api("/api/analyses"));
@@ -752,18 +827,42 @@ $("runModelBtn")?.closest("form")?.addEventListener("submit", async (event) => {
 });
 
 function setModelFile(file) {
-  if (!file) return;
+  if (!file) return clearModelFile();
   const valid = ["image/jpeg", "image/png", "image/webp"].includes(file.type) && file.size <= 10 * 1024 * 1024;
-  if (!valid) { showToast(t("bad_file"), true); return; }
+  if (!valid) { clearModelFile(); showToast(t("bad_file"), true); return; }
   if (modelPreviewUrl) URL.revokeObjectURL(modelPreviewUrl);
   modelPreviewUrl = URL.createObjectURL(file);
   $("modelLeafPreview").src = modelPreviewUrl;
   $("modelLeafPreview").hidden = false;
   $("modelUploadPlaceholder").hidden = true;
   $("runImageModelBtn").disabled = false;
+  $("clearModelPhotoBtn").hidden = false;
+}
+
+function clearModelFile() {
+  if (modelPreviewUrl) URL.revokeObjectURL(modelPreviewUrl);
+  modelPreviewUrl = null;
+  $("modelLeafInput").value = "";
+  $("modelLeafPreview").removeAttribute("src");
+  $("modelLeafPreview").hidden = true;
+  $("modelUploadPlaceholder").hidden = false;
+  $("runImageModelBtn").disabled = true;
+  $("clearModelPhotoBtn").hidden = true;
 }
 
 $("modelLeafInput")?.addEventListener("change", (event) => setModelFile(event.target.files?.[0]));
+$("clearModelPhotoBtn").addEventListener("click", clearModelFile);
+const modelDropZone = $("modelDropZone");
+["dragenter", "dragover"].forEach((name) => modelDropZone.addEventListener(name, (event) => { event.preventDefault(); modelDropZone.classList.add("is-dragging"); }));
+["dragleave", "drop"].forEach((name) => modelDropZone.addEventListener(name, (event) => { event.preventDefault(); modelDropZone.classList.remove("is-dragging"); }));
+modelDropZone.addEventListener("drop", (event) => {
+  const file = event.dataTransfer?.files?.[0];
+  if (!file) return;
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  $("modelLeafInput").files = transfer.files;
+  setModelFile(file);
+});
 $("runImageModelBtn")?.addEventListener("click", async () => {
   const file = $("modelLeafInput").files?.[0];
   if (!file) { showToast(t("select_photo"), true); return; }
@@ -774,10 +873,11 @@ $("runImageModelBtn")?.addEventListener("click", async () => {
   const form = new FormData();
   form.append("image", file);
   try {
-    const result = await api("/api/disease", { method: "POST", body: form }, 125000);
-    const title = result.recognized === false ? t("not_recognized") : result.healthy ? t("healthy_leaf") : result.disease;
-    showModelResult(title, localizedTreatment(result), result.speech || `${title}. ${localizedTreatment(result)}`, result.recognized !== false && result.healthy, result.confidence != null ? `${Number(result.confidence).toFixed(1)}%` : "");
-    showScan(result);
+    const result = await api(selectedModel === "pest" ? "/api/models/pest" : "/api/disease", { method: "POST", body: form }, 125000);
+    const title = selectedModel === "pest" ? t("pest_model") : result.recognized === false ? t("not_recognized") : result.healthy ? t("healthy_leaf") : result.disease;
+    const body = selectedModel === "pest" ? result.analysis : `${localizedTreatment(result)} ${result.cloud_analysis || ""}`.trim();
+    showModelResult(title, body, result.speech || `${title}. ${body}`, selectedModel === "pest" || (result.recognized !== false && result.healthy), result.confidence != null ? `${Number(result.confidence).toFixed(1)}%` : "", result.mode);
+    if (selectedModel === "disease") showScan(result);
     renderActivity(await api("/api/activity"));
     renderAnalyses(await api("/api/analyses"));
   } catch (error) {
@@ -785,9 +885,59 @@ $("runImageModelBtn")?.addEventListener("click", async () => {
   } finally {
     button.disabled = false;
     button.classList.remove("is-loading");
-    button.querySelector("span").textContent = t("scan_leaf");
+    button.querySelector("span").textContent = t(selectedModel === "pest" ? "run_model" : "scan_leaf");
   }
 });
+
+const overviewGrid = $("page-overview").querySelector(".overview-grid");
+const modeBadge = document.createElement("span");
+modeBadge.id = "modelModeBadge";
+modeBadge.className = "status-chip";
+$("modelResult").prepend(modeBadge);
+const oldFieldPage = $("page-field");
+overviewGrid.insertBefore(oldFieldPage.querySelector(".soil-panel"), overviewGrid.querySelector(".activity-panel"));
+overviewGrid.insertBefore(oldFieldPage.querySelector("#cropTitle").closest(".panel"), overviewGrid.querySelector(".activity-panel"));
+oldFieldPage.remove();
+document.querySelectorAll('[data-tab="field"]').forEach((button) => button.remove());
+document.querySelectorAll("#page-overview > :not(#landingPanel)").forEach((node) => node.classList.add("dashboard-private"));
+const mobileNav = document.querySelector(".mobile-nav");
+[["chat", "nav_chat"], ["rover", "nav_rover"]].forEach(([name, key]) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.tab = name;
+  const label = document.createElement("span");
+  label.dataset.i18n = key;
+  label.textContent = t(key);
+  button.append(label);
+  button.addEventListener("click", () => activateTab(name));
+  mobileNav.insertBefore(button, mobileNav.querySelector('[data-tab="history"]'));
+});
+
+document.querySelectorAll("[data-rover-command]").forEach((button) => button.addEventListener("click", () => {
+  const log = $("roverLog");
+  if (log.querySelector(".empty")) log.replaceChildren();
+  const item = document.createElement("article");
+  item.className = "activity-item";
+  const command = button.dataset.roverCommand;
+  item.innerHTML = `<b>${command}</b><p>${new Date().toLocaleTimeString()} · simulated</p>`;
+  log.prepend(item);
+}));
+
+const themeToggle = document.createElement("button");
+themeToggle.id = "themeToggle";
+themeToggle.type = "button";
+themeToggle.className = "theme-toggle";
+themeToggle.setAttribute("aria-label", t("theme_toggle"));
+themeToggle.textContent = "☀ / ☾";
+themeToggle.addEventListener("click", () => {
+  const dark = document.documentElement.dataset.theme !== "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  themeToggle.setAttribute("aria-pressed", String(dark));
+  localStorage.setItem("km-theme", dark ? "dark" : "light");
+});
+document.querySelector(".sidebar-footer").prepend(themeToggle);
+document.documentElement.dataset.theme = localStorage.getItem("km-theme") === "dark" ? "dark" : "light";
+themeToggle.setAttribute("aria-pressed", String(document.documentElement.dataset.theme === "dark"));
 
 selectModel("disease");
 

@@ -99,6 +99,7 @@ class EdgeAPITests(unittest.TestCase):
             edge_server.latest_telemetry = edge_server.normalise_telemetry({})
         # Keep tests hermetic: never reach the weather API even if .env sets a key.
         edge_server.WEATHER_API_KEY = None
+        edge_server.cloud.key = ""
         with edge_server.weather_lock:
             edge_server._weather_cache.clear()
         self.client = edge_server.app.test_client()
@@ -341,7 +342,9 @@ class EdgeAPITests(unittest.TestCase):
         self.assertIn("crop_recommendation", kinds)
         self.assertIn("soil_analysis", kinds)
         catalog = self.client.get("/api/models").json["models"]
-        self.assertEqual({item["id"] for item in catalog}, {"disease", "crop", "soil"})
+        self.assertEqual({item["id"] for item in catalog}, {"disease", "crop", "soil", "pest"})
+        pest = next(item for item in catalog if item["id"] == "pest")
+        self.assertFalse(pest["ready"])
 
     def test_disease_scan_is_recorded_in_analyses(self):
         image_path = next((ROOT / "Data" / "plantvillage" / "Tomato_healthy").glob("*"))
@@ -351,8 +354,34 @@ class EdgeAPITests(unittest.TestCase):
         analyses = self.client.get("/api/analyses").json
         self.assertEqual(analyses[0]["analysis_type"], "disease")
         self.assertIn("speech", analyses[0]["result"])
+        self.assertEqual(analyses[0]["image_url"], f"/api/analyses/{analyses[0]['id']}/image")
+        image = self.client.get(analyses[0]["image_url"])
+        self.assertEqual(image.status_code, 200)
+        self.assertEqual(image.mimetype, "image/jpeg")
+        image.close()
         activity = self.client.get("/api/activity").json
         self.assertEqual(activity[0]["action"], "disease_scan")
+
+    def test_offline_chat_and_pest_fallbacks(self):
+        chat = self.client.post("/api/chat", json={"message": "What are the NPK sensor values?"})
+        self.assertEqual(chat.status_code, 200)
+        self.assertEqual(chat.json["mode"], "edge")
+        self.assertIn("Latest local reading", chat.json["answer"])
+        pest = self.client.post(
+            "/api/models/pest",
+            data={"image": (BytesIO(b"not-read"), "pest.jpg")},
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(pest.status_code, 503)
+        self.assertIn("needs Gemini", pest.json["error"])
+
+    def test_cloud_chat_reports_online_mode(self):
+        edge_server.cloud.key = "test-key"
+        with mock.patch.object(edge_server.cloud, "generate", return_value="Check the lower leaves first."):
+            chat = self.client.post("/api/chat", json={"message": "What should I inspect?"})
+        self.assertEqual(chat.status_code, 200)
+        self.assertEqual(chat.json["mode"], "cloud")
+        self.assertEqual(chat.json["answer"], "Check the lower leaves first.")
 
     def test_tts_prepares_english_and_hindi_payloads(self):
         en = self.client.post("/api/tts", json={"text": "Healthy leaf", "lang": "en"})
