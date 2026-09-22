@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -36,8 +37,18 @@ class CloudService:
             except HTTPError as error:
                 if attempt or error.code not in {429, 500, 502, 503, 504}:
                     raise
+                delay = 0.35
+                if error.code == 429:
+                    try:
+                        detail = json.loads(error.read().decode("utf-8"))
+                        message = detail.get("error", {}).get("message", "")
+                        match = re.search(r"retry in\s+(\d+(?:\.\d+)?)s", message, re.IGNORECASE)
+                        if match:
+                            delay = min(float(match.group(1)) + 0.5, 20)
+                    except (ValueError, UnicodeDecodeError):
+                        pass
                 error.close()
-                time.sleep(0.35)
+                time.sleep(delay)
         if data is None:
             raise RuntimeError("Gemini returned no response")
         text = " ".join(

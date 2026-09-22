@@ -111,7 +111,9 @@
         <header class="page-header compact"><div><p class="overline" data-i18n="nav_chat">Chatbot</p><h1 data-i18n="chat_title">Ask Kisan Mitra</h1></div><p data-i18n="chat_intro">Cloud answers when available, with local sensor guidance offline.</p></header>
         <section class="panel chat-panel">
           <div class="chat-log" id="chatLog" aria-live="polite"><p class="empty" data-i18n="chat_empty">Ask about your sensors, soil, crops, or leaf scans.</p></div>
-          <form id="chatForm" class="chat-form"><label class="visually-hidden" for="chatInput" data-i18n="chat_message">Message</label><input id="chatInput" maxlength="1200" data-i18n-placeholder="chat_placeholder" placeholder="Ask a farm question…" required><button class="primary-button" type="submit" data-i18n="send">Send</button></form>
+          <div class="chat-attachment" id="chatAttachment" hidden><img id="chatPreview" alt="Selected image"><span id="chatFileName"></span><label for="chatRoute" class="visually-hidden" data-i18n="chat_route">Image analysis route</label><select id="chatRoute"><option value="auto" data-i18n="chat_auto">Auto route</option><option value="disease" data-i18n="disease_model_card">Leaf disease detection</option><option value="pest" data-i18n="pest_model">Pest detection (prototype)</option></select><button type="button" class="secondary-button" id="chatRemoveImage" data-i18n="remove">Remove</button></div>
+          <form id="chatForm" class="chat-form"><label class="chat-attach-button" for="chatImage" data-i18n="chat_attach">Attach image</label><input id="chatImage" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp"><label class="visually-hidden" for="chatInput" data-i18n="chat_message">Message</label><input id="chatInput" maxlength="1200" data-i18n-placeholder="chat_placeholder" placeholder="Ask a farm question…"><button class="primary-button" type="submit" data-i18n="send">Send</button></form>
+          <p class="form-status" id="chatStatus" role="status" aria-live="polite"></p>
         </section>
       </section>
 

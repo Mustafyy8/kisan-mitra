@@ -6,7 +6,7 @@ const setText = (id, value) => { const node = $(id); if (node) node.textContent 
 const COPY = {
   en: {
     brand_tag: "Local farm intelligence", nav_overview: "Overview", nav_field: "Field tools", nav_field_short: "Field", nav_system: "System",
-    nav_models: "AI Models", nav_models_short: "Models", nav_history: "History", nav_chat: "Chatbot", chat_title: "Ask Kisan Mitra", chat_intro: "Cloud answers when available, with local sensor guidance offline.", chat_empty: "Ask about your sensors, soil, crops, or leaf scans.", chat_message: "Message", chat_placeholder: "Ask a farm question…", send: "Send", nav_rover: "Rover", rover_title: "Field rover", rover_intro: "Monitor the rover and prepare field commands. Hardware control will connect when the rover protocol is available.", rover_image_pending: "Rover image coming soon", rover_controls: "Movement controls", protocol_pending: "Protocol pending", rover_safe: "Controls are simulated and do not transmit commands.", rover_log: "Prototype activity", rover_empty: "Use a control to preview the command log.", home_title: "One farm system, online or offline", home_intro: "Monitor sensors, analyze crops and leaves, hear results, review history, and connect field robotics from one interface.",
+    nav_models: "AI Models", nav_models_short: "Models", nav_history: "History", nav_chat: "Chatbot", chat_title: "Ask Kisan Mitra", chat_intro: "Ask about farm data or attach an image for model analysis and Gemini guidance.", chat_empty: "Ask about your sensors, soil, crops, or leaf scans.", chat_message: "Message", chat_placeholder: "Ask a farm question…", chat_attach: "Attach image", chat_route: "Image analysis route", chat_auto: "Auto route", chat_photo: "Photo", chat_model_output: "Model result", chat_view_history: "View in History", chat_sending: "Analyzing image…", send: "Send", nav_rover: "Rover", rover_title: "Field rover", rover_intro: "Monitor the rover and prepare field commands. Hardware control will connect when the rover protocol is available.", rover_image_pending: "Rover image coming soon", rover_controls: "Movement controls", protocol_pending: "Protocol pending", rover_safe: "Controls are simulated and do not transmit commands.", rover_log: "Prototype activity", rover_empty: "Use a control to preview the command log.", home_title: "One farm system, online or offline", home_intro: "Monitor sensors, analyze crops and leaves, hear results, review history, and connect field robotics from one interface.",
     connecting: "Connecting", live: "Live", offline: "Offline", checking_server: "Checking edge server…", edge_device: "Edge device", sample_data: "Sample data", sensor_data: "Sensor data", weather_data: "Live weather",
     offline_message: "Live updates are unavailable. Showing the last reading.", retry: "Retry", field_health: "Field health", priority: "Priority",
     soil_moisture: "Soil moisture", temperature: "Temperature", humidity: "Humidity", soil_ph: "Soil pH", ph_note: "Optimal 6.0–7.0", optimal: "Optimal", below_range: "Below target", above_range: "Above target", field_sensor: "Field sensor", live_weather: "Live weather", comfortable: "Comfortable", high_check_leaves: "High — check leaves",
@@ -27,7 +27,7 @@ const COPY = {
   },
   hi: {
     brand_tag: "स्थानीय खेत जानकारी", nav_overview: "मुख्य", nav_field: "खेत के औज़ार", nav_field_short: "खेत", nav_system: "सिस्टम",
-    nav_models: "AI मॉडल", nav_models_short: "मॉडल", nav_history: "इतिहास", nav_chat: "चैटबॉट", chat_title: "किसान मित्र से पूछें", chat_intro: "इंटरनेट पर क्लाउड उत्तर और ऑफ़लाइन स्थानीय सेंसर मार्गदर्शन।", chat_empty: "सेंसर, मिट्टी, फसल या पत्ती स्कैन के बारे में पूछें।", chat_message: "संदेश", chat_placeholder: "खेती का सवाल पूछें…", send: "भेजें", nav_rover: "रोवर", rover_title: "खेत रोवर", rover_intro: "रोवर देखें और खेत कमांड तैयार करें। प्रोटोकॉल मिलने पर हार्डवेयर नियंत्रण जुड़ेगा।", rover_image_pending: "रोवर की फोटो जल्द जोड़ी जाएगी", rover_controls: "हलचल नियंत्रण", protocol_pending: "प्रोटोकॉल बाकी", rover_safe: "ये नियंत्रण केवल प्रदर्शन हैं और कमांड नहीं भेजते।", rover_log: "प्रोटोटाइप गतिविधि", rover_empty: "कमांड लॉग देखने के लिए नियंत्रण दबाएं।", home_title: "ऑनलाइन या ऑफ़लाइन, एक खेत प्रणाली", home_intro: "एक ही इंटरफेस से सेंसर देखें, फसल और पत्ती जांचें, परिणाम सुनें, इतिहास देखें और रोवर जोड़ें।",
+    nav_models: "AI मॉडल", nav_models_short: "मॉडल", nav_history: "इतिहास", nav_chat: "चैटबॉट", chat_title: "किसान मित्र से पूछें", chat_intro: "खेत का डेटा पूछें या मॉडल जांच और जेमिनी सलाह के लिए फोटो जोड़ें।", chat_empty: "सेंसर, मिट्टी, फसल या पत्ती स्कैन के बारे में पूछें।", chat_message: "संदेश", chat_placeholder: "खेती का सवाल पूछें…", chat_attach: "फोटो जोड़ें", chat_route: "फोटो जांच का रास्ता", chat_auto: "अपने आप चुनें", chat_photo: "फोटो", chat_model_output: "मॉडल परिणाम", chat_view_history: "इतिहास में देखें", chat_sending: "फोटो की जांच जारी…", send: "भेजें", nav_rover: "रोवर", rover_title: "खेत रोवर", rover_intro: "रोवर देखें और खेत कमांड तैयार करें। प्रोटोकॉल मिलने पर हार्डवेयर नियंत्रण जुड़ेगा।", rover_image_pending: "रोवर की फोटो जल्द जोड़ी जाएगी", rover_controls: "हलचल नियंत्रण", protocol_pending: "प्रोटोकॉल बाकी", rover_safe: "ये नियंत्रण केवल प्रदर्शन हैं और कमांड नहीं भेजते।", rover_log: "प्रोटोटाइप गतिविधि", rover_empty: "कमांड लॉग देखने के लिए नियंत्रण दबाएं।", home_title: "ऑनलाइन या ऑफ़लाइन, एक खेत प्रणाली", home_intro: "एक ही इंटरफेस से सेंसर देखें, फसल और पत्ती जांचें, परिणाम सुनें और रोवर जोड़ें।",
     connecting: "जुड़ रहा है", live: "लाइव", offline: "ऑफ़लाइन", checking_server: "डिवाइस जांच रहा है…", edge_device: "खेत का डिवाइस", sample_data: "नमूना डेटा", sensor_data: "सेंसर डेटा", weather_data: "लाइव मौसम",
     offline_message: "लाइव अपडेट उपलब्ध नहीं हैं। पिछली रीडिंग दिखाई जा रही है।", retry: "फिर कोशिश करें", field_health: "खेत की सेहत", priority: "आज का काम",
     soil_moisture: "मिट्टी की नमी", temperature: "तापमान", humidity: "हवा की नमी", soil_ph: "मिट्टी का pH", ph_note: "6.0–7.0 सही", optimal: "सही स्तर", below_range: "स्तर कम", above_range: "स्तर ज़्यादा", field_sensor: "खेत का सेंसर", live_weather: "लाइव मौसम", comfortable: "ठीक है", high_check_leaves: "ज़्यादा — पत्तियां देखें",
@@ -366,7 +366,8 @@ function showAnalysisDetail(item) {
   meta.textContent = [item.model, item.user?.username, formatWhen(item.created_at)].filter(Boolean).join(" · ");
   const body = document.createElement("p");
   const result = item.result || {};
-  if (item.analysis_type === "disease") body.textContent = localizedTreatment(result);
+  if (result.chat_answer) body.textContent = result.chat_answer;
+  else if (item.analysis_type === "disease") body.textContent = localizedTreatment(result);
   else if (item.analysis_type === "crop") {
     const crops = (result.crops || []).map((c) => `${c.crop} ${c.confidence}%`).join(", ");
     body.textContent = `${result.recommendation?.title || ""}. ${result.recommendation?.message || ""} ${crops}`.trim();
@@ -716,35 +717,110 @@ $("tokenForm").addEventListener("submit", (event) => {
   setText("tokenStatus", value ? t("token_set") : t("token_cleared")); $("tokenInput").value = "";
 });
 
+let chatPreviewUrl = null;
+function clearChatImage() {
+  if (chatPreviewUrl) URL.revokeObjectURL(chatPreviewUrl);
+  chatPreviewUrl = null;
+  $("chatImage").value = "";
+  $("chatPreview").removeAttribute("src");
+  $("chatAttachment").hidden = true;
+  $("chatRoute").value = "auto";
+}
+$("chatImage").addEventListener("change", (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return clearChatImage();
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) {
+    clearChatImage();
+    showToast(t("bad_file"), true);
+    return;
+  }
+  if (chatPreviewUrl) URL.revokeObjectURL(chatPreviewUrl);
+  chatPreviewUrl = URL.createObjectURL(file);
+  $("chatPreview").src = chatPreviewUrl;
+  $("chatFileName").textContent = file.name;
+  $("chatAttachment").hidden = false;
+});
+$("chatRemoveImage").addEventListener("click", clearChatImage);
+
 $("chatForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = $("chatInput");
   const message = input.value.trim();
-  if (!message) return;
+  const file = $("chatImage").files?.[0];
+  if (!message && !file) return;
+  const send = $("chatForm").querySelector('button[type="submit"]');
+  const status = $("chatStatus");
+  status.textContent = file ? t("chat_sending") : "";
+  status.classList.remove("is-error");
+  send.disabled = true;
   const log = $("chatLog");
   if (log.querySelector(".empty")) log.replaceChildren();
   const user = document.createElement("p");
   user.className = "chat-message user";
-  user.textContent = message;
+  user.textContent = message || t("chat_photo");
+  const photo = file ? document.createElement("img") : null;
+  if (photo) {
+    photo.src = chatPreviewUrl;
+    photo.alt = file.name;
+    user.append(photo);
+  }
   log.append(user);
-  input.value = "";
   try {
-    const result = await api("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) }, 45000);
+    let result;
+    if (file) {
+      const form = new FormData();
+      form.append("image", file);
+      form.append("message", message);
+      form.append("route", $("chatRoute").value);
+      result = await api("/api/chat/image", { method: "POST", body: form }, 125000);
+    } else {
+      result = await api("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) }, 45000);
+    }
     const reply = document.createElement("div");
     reply.className = "chat-message assistant";
     const mode = document.createElement("small");
     mode.textContent = t(result.mode === "cloud" ? "mode_cloud" : "mode_edge");
     const text = document.createElement("p");
     text.textContent = result.answer;
+    if (file) {
+      const model = document.createElement("span");
+      model.className = "chat-model-note";
+      const output = result.analysis_type === "pest"
+        ? result.model_output?.analysis?.slice(0, 140)
+        : result.model_output?.recognized === false ? t("not_recognized") : result.model_output?.disease || result.model_output?.label;
+      model.textContent = `${t("chat_model_output")}: ${typeLabel(result.analysis_type)} · ${output || ""}`;
+      reply.append(model);
+    }
     const listen = document.createElement("button");
     listen.type = "button";
     listen.className = "listen-button";
     listen.textContent = t("listen");
     listen.addEventListener("click", () => speakResult(result.answer, language));
     reply.append(mode, text, listen);
+    if (file) {
+      const history = document.createElement("button");
+      history.type = "button";
+      history.className = "text-link";
+      history.textContent = t("chat_view_history");
+      history.addEventListener("click", () => { activateTab("history"); openAnalysis(result.analysis_id); });
+      reply.append(history);
+      photo.src = result.image_url;
+      clearChatImage();
+    }
     log.append(reply);
+    input.value = "";
+    status.textContent = "";
+    if (file) {
+      const [activity, analyses] = await Promise.allSettled([api("/api/activity"), api("/api/analyses")]);
+      if (activity.status === "fulfilled") renderActivity(activity.value);
+      if (analyses.status === "fulfilled") renderAnalyses(analyses.value);
+    }
   } catch (error) {
-    showToast(errorMessage(error), true);
+    user.remove();
+    status.textContent = errorMessage(error);
+    status.classList.add("is-error");
+  } finally {
+    send.disabled = false;
   }
 });
 

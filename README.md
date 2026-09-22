@@ -36,7 +36,7 @@ cp .env.example .env
 Then edit `.env`:
 
 - **`KISAN_SECRET_KEY`** — any long random string; used to sign sessions. Generate one with `python -c "import secrets; print(secrets.token_hex(32))"`. If unset, the server uses a random per-boot key and warns on startup.
-- **`KISAN_API_TOKEN`** *(optional)* — when set, non-auth writes (`POST /api/sensors`, `/api/disease`, `/api/profile`, and `/api/models/*`) require an `Authorization: Bearer <token>` header. A signed-in dashboard session also grants write access.
+- **`KISAN_API_TOKEN`** *(optional)* — when set, non-auth writes (`POST /api/sensors`, `/api/disease`, `/api/profile`, `/api/models/*`, and `/api/chat/image`) require an `Authorization: Bearer <token>` header. A signed-in dashboard session also grants write access.
 - **`OPENWEATHER_API_KEY`** / **`OPENWEATHER_CITY`** *(optional)* — live temperature/humidity/rainfall from OpenWeatherMap, with automatic fallback to local sensors when offline (see Production notes).
 - **`GEMINI_API_KEY`** / **`GEMINI_MODEL`** *(optional)* — enables cloud agronomy explanations, cloud chat, and prototype pest screening. Local disease/crop/soil models still run first and remain the fallback if Gemini is unavailable.
 
@@ -133,6 +133,7 @@ All three models are available through the active Flask application:
 5. Speech: a model result is sent to `POST /api/tts`, then played locally with the browser's `speechSynthesis` engine (English or Hindi); Listen and Stop controls are shown together.
 6. Accounts: signup/login uses a SQLite `users` table, Werkzeug password hashing, and a signed Flask session. The landing page exposes authentication while operational navigation is disabled for signed-out users.
 7. Rover: the current page is a visual prototype. Its controls intentionally simulate activity without transmitting commands until a hardware protocol is supplied.
+8. Chat images: the Chatbot accepts a JPG, PNG, or WEBP image with an optional question. Auto routing checks the local disease model first and uses the cloud pest screening prototype for pest questions or unrecognized leaves. The selected model output and image are then sent to Gemini for the final answer. The image, model result, and answer are saved in History. Disease and Pest can also be selected explicitly.
 
 Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the respective local model from its included training dataset.
 
@@ -152,6 +153,7 @@ Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the
 | `POST /api/models/crop`, `/api/models/soil` | Run a selected tabular model from the latest persisted sensor reading and save the result. Explicit JSON inputs remain accepted for API clients. |
 | `POST /api/models/pest` | Run the optional cloud pest-screening prototype from an uploaded image. |
 | `POST /api/chat` | Ask the farm assistant about the saved farm profile, timestamped sensor readings, recent model analyses, and activity. Gemini receives a bounded farm snapshot when configured; limited local answers remain available offline. Demo readings are labelled as demo. |
+| `POST /api/chat/image` | Multipart `image` plus optional `message` and `route=auto|disease|pest`; run a specialized image analysis, give Gemini its output and the image, and persist the result. Auto routing retains the local disease result if cloud pest screening fails. |
 | `POST /api/tts` | Validate model output and return the browser voice/language payload. |
 | `POST /api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `GET /api/auth/me` | Create a user, manage the signed session, or inspect the current user. |
 | `GET /api/activity` | Recent persisted model, scan, account, and profile activity. |
