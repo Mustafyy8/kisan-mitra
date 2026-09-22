@@ -143,8 +143,11 @@ h2 { margin: 0; font-size: 17px; line-height: 1.3; letter-spacing: -.015em; }
 .rover-placeholder svg { width:min(280px,75%); fill:var(--green); opacity:.55; }
 .rover-pad { display:grid; grid-template-columns:repeat(3,58px); justify-content:center; gap:8px; margin:24px 0; }
 .rover-pad button { min-height:52px; border:1px solid var(--line); border-radius:12px; background:var(--surface-soft); cursor:pointer; font-size:20px; }
-.rover-pad button:first-child { grid-column:2; }
-.rover-pad button:last-child { grid-column:2; }
+.rover-pad [data-rover-command="forward"] { grid-column:2; grid-row:1; }
+.rover-pad [data-rover-command="left"] { grid-column:1; grid-row:2; }
+.rover-pad [data-rover-command="stop"] { grid-column:2; grid-row:2; }
+.rover-pad [data-rover-command="right"] { grid-column:3; grid-row:2; }
+.rover-pad [data-rover-command="backward"] { grid-column:2; grid-row:3; }
 @media (max-width:700px) { .rover-grid { grid-template-columns:1fr; } .rover-log-panel { grid-column:auto; } .landing-actions,.chat-form { flex-direction:column; } }
 .model-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; }
 .model-card { display: grid; gap: 8px; min-height: 140px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: left; cursor: pointer; box-shadow: var(--shadow); }
