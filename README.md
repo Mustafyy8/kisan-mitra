@@ -151,7 +151,7 @@ Run `python train_crop_model.py` or `python train_soil_model.py` to recreate the
 | `GET /api/models`, `/api/ai/status` | List local/prototype models and report optional cloud-AI availability. |
 | `POST /api/models/crop`, `/api/models/soil` | Run a selected tabular model from the latest persisted sensor reading and save the result. Explicit JSON inputs remain accepted for API clients. |
 | `POST /api/models/pest` | Run the optional cloud pest-screening prototype from an uploaded image. |
-| `POST /api/chat` | Ask the farm assistant; Gemini is used when configured and a limited local sensor-aware assistant is used offline. |
+| `POST /api/chat` | Ask the farm assistant about the saved farm profile, timestamped sensor readings, recent model analyses, and activity. Gemini receives a bounded farm snapshot when configured; limited local answers remain available offline. Demo readings are labelled as demo. |
 | `POST /api/tts` | Validate model output and return the browser voice/language payload. |
 | `POST /api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `GET /api/auth/me` | Create a user, manage the signed session, or inspect the current user. |
 | `GET /api/activity` | Recent persisted model, scan, account, and profile activity. |
