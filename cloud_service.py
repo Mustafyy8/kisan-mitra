@@ -4,13 +4,15 @@ from __future__ import annotations
 import base64
 import json
 import os
+import time
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
 class CloudService:
     def __init__(self) -> None:
         self.key = os.environ.get("GEMINI_API_KEY", "").strip()
-        self.model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
+        self.model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
 
     @property
     def configured(self) -> bool:
@@ -25,8 +27,19 @@ class CloudService:
         payload = json.dumps({"contents": [{"parts": parts}]}).encode("utf-8")
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         req = Request(url, data=payload, headers={"x-goog-api-key": self.key, "Content-Type": "application/json"}, method="POST")
-        with urlopen(req, timeout=8) as response:
-            data = json.loads(response.read().decode("utf-8"))
+        data = None
+        for attempt in range(2):
+            try:
+                with urlopen(req, timeout=15) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                break
+            except HTTPError as error:
+                if attempt or error.code not in {429, 500, 502, 503, 504}:
+                    raise
+                error.close()
+                time.sleep(0.35)
+        if data is None:
+            raise RuntimeError("Gemini returned no response")
         text = " ".join(
             part["text"]
             for candidate in data.get("candidates", [])

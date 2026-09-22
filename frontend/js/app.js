@@ -729,7 +729,7 @@ $("chatForm").addEventListener("submit", async (event) => {
   log.append(user);
   input.value = "";
   try {
-    const result = await api("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) }, 20000);
+    const result = await api("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) }, 45000);
     const reply = document.createElement("div");
     reply.className = "chat-message assistant";
     const mode = document.createElement("small");
@@ -813,7 +813,7 @@ $("runModelBtn")?.closest("form")?.addEventListener("submit", async (event) => {
   $("modelRunStatus").classList.remove("is-error");
   try {
     const path = selectedModel === "soil" ? "/api/models/soil" : "/api/models/crop";
-    const result = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formValues($("modelSensorForm"))) });
+    const result = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formValues($("modelSensorForm"))) }, 45000);
     if (selectedModel === "crop") {
       const top = result.crops?.[0];
       showModelResult(result.recommendation?.title || t("crop_model"), `${result.recommendation?.message || ""} ${(result.crops || []).map((c) => `${c.crop} ${c.confidence}%`).join(", ")} ${result.cloud_analysis || ""}`.trim(), result.speech, true, top ? `${top.confidence}%` : "", result.mode);
