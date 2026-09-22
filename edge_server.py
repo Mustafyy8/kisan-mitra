@@ -1115,6 +1115,7 @@ def chat_image() -> Response:
     return jsonify({
         "answer": answer, "mode": mode, "analysis_type": chosen, "model": model_name,
         "model_output": model_output, "analysis_id": analysis_id,
+        "cloud_followup": "completed" if final else ("unavailable" if cloud.configured else "not_configured"),
         "image_url": f"/api/analyses/{analysis_id}/image",
     }), 201
 
