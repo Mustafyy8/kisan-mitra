@@ -249,6 +249,16 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertIn("200 or fewer", response.json["error"])
 
+    def test_write_routes_reject_non_object_model_and_profile_payloads(self):
+        for route in ("/api/models/crop", "/api/models/soil"):
+            with self.subTest(route=route):
+                response = self.client.post(route, json=["not", "an", "object"])
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("JSON object", response.json["error"])
+        response = self.client.post("/api/profile", json=["not", "an", "object"])
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json["error"], "JSON object required")
+
     def test_weather_params_priority(self):
         # 1. No GPS, no farm location: env default city.
         self.assertEqual(edge_server.weather_params(), {"q": edge_server.WEATHER_CITY})
@@ -297,6 +307,62 @@ class EdgeAPITests(unittest.TestCase):
         self.assertIn("q=Ludhiana%2C+IN", captured["url"])
         self.assertIn("appid=test-key", captured["url"])
         self.assertIn("units=metric", captured["url"])
+
+    def test_signup_login_logout_and_session(self):
+        created = self.client.post("/api/auth/signup", json={"username": "farmer_one", "password": "secret123"})
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json["user"]["username"], "farmer_one")
+        self.assertEqual(self.client.get("/api/auth/me").json["user"]["username"], "farmer_one")
+        duplicate = self.client.post("/api/auth/signup", json={"username": "farmer_one", "password": "secret123"})
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(self.client.post("/api/auth/logout").status_code, 200)
+        self.assertIsNone(self.client.get("/api/auth/me").json["user"])
+        bad = self.client.post("/api/auth/login", json={"username": "farmer_one", "password": "wrongpass"})
+        self.assertEqual(bad.status_code, 401)
+        ok = self.client.post("/api/auth/login", json={"username": "farmer_one", "password": "secret123"})
+        self.assertEqual(ok.status_code, 200)
+        weak = self.client.post("/api/auth/signup", json={"username": "ab", "password": "short"})
+        self.assertEqual(weak.status_code, 422)
+
+    def test_models_crop_and_soil_persist_history_and_activity(self):
+        crop = self.client.post("/api/models/crop", json={"n": 90, "p": 42, "k": 43, "temperature": 20.9, "humidity": 82, "ph": 6.5, "rainfall": 203})
+        self.assertEqual(crop.status_code, 201)
+        self.assertTrue(crop.json["crops"])
+        self.assertIn("speech", crop.json)
+        soil = self.client.post("/api/models/soil", json={"n": 138, "p": 8.6, "k": 560, "ph": 7.46, "ec": 0.62, "organic_carbon": 0.7})
+        self.assertEqual(soil.status_code, 201)
+        self.assertEqual(soil.json["fertility"]["status"], "ready")
+        analyses = self.client.get("/api/analyses").json
+        self.assertGreaterEqual(len(analyses), 2)
+        detail = self.client.get(f"/api/analyses/{analyses[0]['id']}")
+        self.assertEqual(detail.status_code, 200)
+        activity = self.client.get("/api/activity").json
+        kinds = {item["action"] for item in activity}
+        self.assertIn("crop_recommendation", kinds)
+        self.assertIn("soil_analysis", kinds)
+        catalog = self.client.get("/api/models").json["models"]
+        self.assertEqual({item["id"] for item in catalog}, {"disease", "crop", "soil"})
+
+    def test_disease_scan_is_recorded_in_analyses(self):
+        image_path = next((ROOT / "Data" / "plantvillage" / "Tomato_healthy").glob("*"))
+        response = self.client.post("/api/disease", data={"image": (BytesIO(image_path.read_bytes()), image_path.name)}, content_type="multipart/form-data")
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("speech", response.json)
+        analyses = self.client.get("/api/analyses").json
+        self.assertEqual(analyses[0]["analysis_type"], "disease")
+        self.assertIn("speech", analyses[0]["result"])
+        activity = self.client.get("/api/activity").json
+        self.assertEqual(activity[0]["action"], "disease_scan")
+
+    def test_tts_prepares_english_and_hindi_payloads(self):
+        en = self.client.post("/api/tts", json={"text": "Healthy leaf", "lang": "en"})
+        self.assertEqual(en.status_code, 200)
+        self.assertEqual(en.json["voice_lang"], "en-IN")
+        hi = self.client.post("/api/tts", json={"text": "पत्ती स्वस्थ है", "lang": "hi"})
+        self.assertEqual(hi.status_code, 200)
+        self.assertEqual(hi.json["voice_lang"], "hi-IN")
+        missing = self.client.post("/api/tts", json={"text": "", "lang": "en"})
+        self.assertEqual(missing.status_code, 422)
 
 
 if __name__ == "__main__":
