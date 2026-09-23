@@ -41,14 +41,9 @@ class CloudServiceTests(unittest.TestCase):
             self.assertEqual(service.generate("Hello"), "Ready")
         sleep.assert_called_once_with(3.0)
 
-    def test_image_rate_limit_uses_fallback_and_reports_model(self):
+    def test_cloud_request_contains_text_only(self):
         service = CloudService()
         service.key = "test-key"
-        service.image_fallback_models = ("gemini-3.1-flash-lite",)
-        error = HTTPError(
-            "https://generativelanguage.googleapis.com", 429, "rate limit", {},
-            BytesIO(b'{"error":{"message":"Quota exceeded"}}'),
-        )
 
         class Reply:
             def __enter__(self):
@@ -60,13 +55,11 @@ class CloudServiceTests(unittest.TestCase):
             def read(self):
                 return b'{"candidates":[{"content":{"parts":[{"text":"Check the underside of the leaf."}]}}]}'
 
-        with mock.patch("cloud_service.urlopen", side_effect=[error, Reply()]) as request, \
-             mock.patch("cloud_service.time.sleep") as sleep:
-            result = service.generate_result("Check for pests", b"image-bytes")
-        self.assertEqual(result.model, "gemini-3.1-flash-lite")
+        with mock.patch("cloud_service.urlopen", return_value=Reply()) as request:
+            result = service.generate_result("Explain this local result")
+        self.assertEqual(result.model, service.model)
         self.assertIn("underside", result.text)
-        self.assertIn("gemini-3.1-flash-lite", request.call_args.args[0].full_url)
-        sleep.assert_not_called()
+        self.assertNotIn(b"inline_data", request.call_args.args[0].data)
 
 
 class MLServiceTests(unittest.TestCase):
@@ -83,6 +76,24 @@ class MLServiceTests(unittest.TestCase):
         result = self.service.assess_soil_fertility({"n": 138, "p": 8.6, "k": 560, "ph": 7.46, "ec": 0.62, "organic_carbon": 0.7})
         self.assertEqual(result["status"], "ready")
         self.assertIn(result["fertility"], {"Less fertile", "Fertile", "Highly fertile"})
+
+    def test_local_pest_model_rejects_blank_image(self):
+        buffer = BytesIO()
+        Image.new("RGB", (224, 224), (255, 255, 255)).save(buffer, format="JPEG")
+        result = self.service.screen_pest(buffer.getvalue())
+        self.assertFalse(result["recognized"])
+        self.assertEqual(result["mode"], "edge")
+        self.assertIn("close-up", result["analysis"])
+
+    def test_local_pest_detector_finds_aphid_and_rejects_leaf_only_photo(self):
+        insect = self.service.screen_pest((ROOT / "tests" / "fixtures" / "pea_aphid.jpg").read_bytes())
+        self.assertTrue(insect["recognized"])
+        self.assertIn("aphid", insect["label"].lower())
+        self.assertGreater(insect["confidence"], 55)
+        self.assertTrue(insect["detections"][0]["box"])
+        leaf = self.service.screen_pest((ROOT / "test.jpg").read_bytes())
+        self.assertFalse(leaf["recognized"])
+        self.assertEqual(leaf["detections"], [])
 
     def _studio_samples(self, class_name: str, count: int = 5):
         """Deterministic, sorted studio samples (next(glob) is filesystem-order)."""
@@ -398,7 +409,7 @@ class EdgeAPITests(unittest.TestCase):
         catalog = self.client.get("/api/models").json["models"]
         self.assertEqual({item["id"] for item in catalog}, {"disease", "crop", "soil", "pest"})
         pest = next(item for item in catalog if item["id"] == "pest")
-        self.assertFalse(pest["ready"])
+        self.assertTrue(pest["ready"])
 
     def test_disease_scan_is_recorded_in_analyses(self):
         image_path = next((ROOT / "Data" / "plantvillage" / "Tomato_healthy").glob("*"))
@@ -416,18 +427,36 @@ class EdgeAPITests(unittest.TestCase):
         activity = self.client.get("/api/activity").json
         self.assertEqual(activity[0]["action"], "disease_scan")
 
-    def test_offline_chat_and_pest_fallbacks(self):
+    def test_leaf_scan_sends_only_model_text_to_gemini(self):
+        image_path = next((ROOT / "Data" / "plantvillage" / "Tomato_healthy").glob("*"))
+        edge_server.cloud.key = "test-key"
+        with mock.patch.object(edge_server.cloud, "generate", return_value="Continue checking leaves.") as generate:
+            response = self.client.post(
+                "/api/disease", data={"image": (BytesIO(image_path.read_bytes()), image_path.name)},
+                content_type="multipart/form-data",
+            )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(generate.call_args.args), 1)
+        self.assertNotIn("inline_data", generate.call_args.args[0])
+        self.assertIn("Tomato", generate.call_args.args[0])
+
+    def test_offline_chat_and_local_pest_screening(self):
         chat = self.client.post("/api/chat", json={"message": "What are the NPK sensor values?"})
         self.assertEqual(chat.status_code, 200)
         self.assertEqual(chat.json["mode"], "edge")
         self.assertIn("Demo values (no real sensor reading)", chat.json["answer"])
+        image = BytesIO()
+        Image.new("RGB", (224, 224), (255, 255, 255)).save(image, format="JPEG")
+        image.seek(0)
         pest = self.client.post(
             "/api/models/pest",
-            data={"image": (BytesIO(b"not-read"), "pest.jpg")},
+            data={"image": (image, "pest.jpg")},
             content_type="multipart/form-data",
         )
-        self.assertEqual(pest.status_code, 503)
-        self.assertIn("needs Gemini", pest.json["error"])
+        self.assertEqual(pest.status_code, 201)
+        self.assertEqual(pest.json["mode"], "edge")
+        self.assertFalse(pest.json["recognized"])
+        self.assertEqual(self.client.get(f"/api/analyses/{pest.json['analysis_id']}").json["model"], "pest_yolo11s.onnx")
 
     def test_cloud_chat_reports_online_mode(self):
         edge_server.cloud.key = "test-key"
@@ -481,7 +510,7 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(response.json["analysis_type"], "disease")
         self.assertEqual(response.json["mode"], "cloud")
         self.assertIn("Tomato_healthy", generate.call_args.args[0])
-        self.assertEqual(generate.call_args.args[1], image_path.read_bytes())
+        self.assertEqual(len(generate.call_args.args), 1)
         diagnose.assert_called_once()
         detail = self.client.get(f"/api/analyses/{response.json['analysis_id']}").json
         self.assertEqual(detail["result"]["chat_answer"], response.json["answer"])
@@ -489,14 +518,16 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(image.mimetype, "image/jpeg")
         image.close()
 
-    def test_chat_image_routes_pest_question_to_existing_cloud_screening(self):
+    def test_chat_image_routes_pest_question_to_local_model_and_text_only_gemini(self):
         buffer = BytesIO()
         Image.new("RGB", (224, 224), (80, 140, 60)).save(buffer, format="JPEG")
         buffer.seek(0)
         edge_server.cloud.key = "test-key"
+        local_pest = {"recognized": True, "label": "Pea aphid", "analysis": "Possible pea aphid. Verify in the field.", "mode": "edge"}
         with mock.patch.object(edge_server.ml, "diagnose") as diagnose, \
+             mock.patch.object(edge_server.ml, "screen_pest", return_value=local_pest) as screen_pest, \
              mock.patch.object(edge_server.cloud, "generate_result", return_value=CloudResult(
-                 "Aphids may be visible; inspect the leaf underside.", "gemini-3.1-flash-lite"
+                 "The local model suggests a pea aphid. Inspect the leaf underside.", edge_server.cloud.model
              )) as generate:
             response = self.client.post(
                 "/api/chat/image",
@@ -506,25 +537,25 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json["analysis_type"], "pest")
         self.assertEqual(response.json["mode"], "cloud")
-        self.assertEqual(response.json["model"], "gemini-3.1-flash-lite")
+        self.assertEqual(response.json["model"], "pest_yolo11s.onnx")
         self.assertEqual(generate.call_count, 1)
         self.assertIn("Are there aphids?", generate.call_args.args[0])
+        self.assertEqual(len(generate.call_args.args), 1)
+        screen_pest.assert_called_once()
         diagnose.assert_not_called()
 
-    def test_pest_quota_error_is_actionable(self):
+    def test_pest_screening_does_not_call_gemini_even_when_configured(self):
         buffer = BytesIO()
         Image.new("RGB", (224, 224), (80, 140, 60)).save(buffer, format="JPEG")
         buffer.seek(0)
         edge_server.cloud.key = "test-key"
-        with mock.patch.object(edge_server.cloud, "generate_result", side_effect=CloudError(
-            "rate_limit", "Gemini request limit reached. Try again later or use a model with available quota."
-        )):
+        with mock.patch.object(edge_server.cloud, "generate_result") as generate:
             response = self.client.post(
                 "/api/models/pest", data={"image": (buffer, "leaf.jpg")}, content_type="multipart/form-data",
             )
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json["reason"], "rate_limit")
-        self.assertIn("request limit", response.json["error"])
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json["mode"], "edge")
+        generate.assert_not_called()
 
     def test_chat_image_offline_auto_keeps_local_result(self):
         buffer = BytesIO()
@@ -538,9 +569,9 @@ class EdgeAPITests(unittest.TestCase):
                 content_type="multipart/form-data",
             )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json["analysis_type"], "disease")
+        self.assertEqual(response.json["analysis_type"], "pest")
         self.assertEqual(response.json["mode"], "edge")
-        self.assertIn("Not recognized", response.json["answer"])
+        self.assertIn("No supported pest", response.json["answer"])
 
     def test_chat_image_cloud_limit_keeps_local_result_and_reason(self):
         buffer = BytesIO()
@@ -553,7 +584,7 @@ class EdgeAPITests(unittest.TestCase):
                  "rate_limit", "Gemini request limit reached. Try again later or use a model with available quota."
              )) as generate:
             response = self.client.post(
-                "/api/chat/image", data={"image": (buffer, "leaf.jpg"), "route": "auto"},
+                "/api/chat/image", data={"image": (buffer, "leaf.jpg"), "route": "disease"},
                 content_type="multipart/form-data",
             )
         self.assertEqual(response.status_code, 201)

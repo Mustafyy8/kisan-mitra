@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from ast import literal_eval
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,7 @@ from typing import Any
 import joblib
 import numpy as np
 import onnxruntime as ort
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 ROOT = Path(__file__).resolve().parent
 MODEL_DIR = ROOT / "models"
@@ -17,6 +18,9 @@ DISEASE_MODEL = MODEL_DIR / "plant_disease.onnx"
 DISEASE_CALIBRATION = MODEL_DIR / "plant_disease_centroids.npz"
 CROP_MODEL = MODEL_DIR / "crop_recommendation.joblib"
 SOIL_MODEL = MODEL_DIR / "soil_fertility.joblib"
+PEST_MODEL = MODEL_DIR / "pest_yolo11s.onnx"
+PEST_CONFIDENCE_FLOOR = 0.55
+PEST_NMS_IOU = 0.45
 
 # The PlantVillage model is a closed-set classifier: it always emits a full
 # softmax, so blank or out-of-distribution images get forced onto one of its 15
@@ -69,6 +73,8 @@ class MLService:
         self._disease_ood: dict[str, Any] | None = None
         self._crop_model: Any = None
         self._soil_model: Any = None
+        self._pest_session: ort.InferenceSession | None = None
+        self._pest_labels: dict[int, str] | None = None
 
     def disease_ready(self) -> bool:
         return DISEASE_MODEL.exists()
@@ -83,12 +89,16 @@ class MLService:
     def soil_ready(self) -> bool:
         return SOIL_MODEL.exists()
 
+    def pest_ready(self) -> bool:
+        return PEST_MODEL.exists()
+
     def model_status(self) -> dict[str, dict[str, Any]]:
         """Report whether each model artefact is present, for the health endpoint."""
         return {
             "disease": {"ready": self.disease_ready(), "file": DISEASE_MODEL.name, "ood": self.disease_ood_ready()},
             "crop": {"ready": self.crop_ready(), "file": CROP_MODEL.name},
             "soil": {"ready": self.soil_ready(), "file": SOIL_MODEL.name},
+            "pest": {"ready": self.pest_ready(), "file": PEST_MODEL.name},
         }
 
     def _disease(self) -> ort.InferenceSession:
@@ -121,6 +131,97 @@ class MLService:
             self._soil_model = joblib.load(SOIL_MODEL)
         return self._soil_model
 
+    def _pest(self) -> ort.InferenceSession:
+        if self._pest_session is None:
+            self._pest_session = ort.InferenceSession(str(PEST_MODEL), providers=["CPUExecutionProvider"])
+            self._pest_labels = literal_eval(self._pest_session.get_modelmeta().custom_metadata_map["names"])
+        return self._pest_session
+
+    def screen_pest(self, image_bytes: bytes, leaf_result: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Detect IP102 pests locally; return no finding when no credible box survives."""
+        if not self.pest_ready():
+            raise RuntimeError("Pest model is not installed")
+        try:
+            with Image.open(BytesIO(image_bytes)) as loaded:
+                if min(loaded.size) < MIN_IMAGE_DIM:
+                    raise ValueError("Use a pest photo at least 64x64 pixels")
+                oriented = ImageOps.exif_transpose(loaded)
+                width, height = oriented.size
+                image = ImageOps.pad(oriented.convert("RGB"), (640, 640), method=Image.Resampling.BILINEAR, color=(114, 114, 114))
+        except (UnidentifiedImageError, OSError) as error:
+            raise ValueError("Upload a valid JPG, PNG, or WEBP pest image") from error
+        pixels = np.asarray(image, dtype=np.float32)
+        if float(pixels.std()) < MIN_IMAGE_STD:
+            return self._uncertain_pest()
+        vector = np.transpose(pixels / 255.0, (2, 0, 1))[None].astype(np.float32)
+        session = self._pest()
+        start = time.perf_counter()
+        output = session.run(None, {session.get_inputs()[0].name: vector})[0][0]
+        inference_ms = round((time.perf_counter() - start) * 1000, 1)
+        classes = output[4:].argmax(axis=0)
+        confidences = output[4:].max(axis=0)
+        candidates = np.where(confidences >= PEST_CONFIDENCE_FLOOR)[0]
+        if not len(candidates):
+            return self._uncertain_pest(inference_ms)
+        # The detector can mistake leaf lesions for insects. A confident local
+        # leaf diagnosis is stronger evidence for a leaf-only photo.
+        leaf_result = leaf_result if leaf_result is not None else self.diagnose(image_bytes)
+        if leaf_result.get("recognized"):
+            return self._uncertain_pest(inference_ms)
+        scale = min(640 / width, 640 / height)
+        pad_x, pad_y = (640 - width * scale) / 2, (640 - height * scale) / 2
+        detections: list[dict[str, Any]] = []
+        boxes: list[np.ndarray] = []
+        for index in sorted(candidates, key=lambda i: float(confidences[i]), reverse=True):
+            cx, cy, w, h = output[:4, index]
+            box = np.array([cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2], dtype=np.float32)
+            if any(d["class_id"] == int(classes[index]) and self._box_iou(box, previous) > PEST_NMS_IOU for d, previous in zip(detections, boxes)):
+                continue
+            x1, y1, x2, y2 = box
+            label = self._pest_labels[int(classes[index])]
+            detections.append({
+                "class_id": int(classes[index]), "label": label,
+                "confidence": round(float(confidences[index]) * 100, 2),
+                "box": [round(float(v), 1) for v in (
+                    max(0, min(width, (x1 - pad_x) / scale)), max(0, min(height, (y1 - pad_y) / scale)),
+                    max(0, min(width, (x2 - pad_x) / scale)), max(0, min(height, (y2 - pad_y) / scale)),
+                )],
+            })
+            boxes.append(box)
+            if len(detections) >= 20:
+                break
+        label = detections[0]["label"]
+        count = len(detections)
+        analysis = (
+            f"Possible {label} detected ({count} candidate{'s' if count != 1 else ''}). "
+            "Confirm the insect in the field before choosing any treatment. "
+            "This local model detects 102 pest categories and may miss unfamiliar species."
+        )
+        return {
+            "recognized": True, "label": label, "confidence": detections[0]["confidence"],
+            "analysis": analysis, "speech": analysis, "mode": "edge", "prototype": False,
+            "inference_ms": inference_ms, "detections": detections,
+        }
+
+    @staticmethod
+    def _box_iou(a: np.ndarray, b: np.ndarray) -> float:
+        intersection = max(0.0, float(min(a[2], b[2]) - max(a[0], b[0]))) * max(0.0, float(min(a[3], b[3]) - max(a[1], b[1])))
+        area_a = max(0.0, float(a[2] - a[0])) * max(0.0, float(a[3] - a[1]))
+        area_b = max(0.0, float(b[2] - b[0])) * max(0.0, float(b[3] - b[1]))
+        return intersection / (area_a + area_b - intersection + 1e-9)
+
+    @staticmethod
+    def _uncertain_pest(inference_ms: float = 0.0) -> dict[str, Any]:
+        analysis = (
+            "No supported pest detected confidently. Retake a sharp close-up of an insect if one is visible. "
+            "This local model covers 102 pest categories but can miss small or unfamiliar insects."
+        )
+        return {
+            "recognized": False, "label": "Not recognized", "confidence": None,
+            "analysis": analysis, "speech": analysis, "mode": "edge", "prototype": False,
+            "inference_ms": inference_ms, "detections": [],
+        }
+
     def _unknown_result(self, scores: np.ndarray, inference_ms: float) -> dict[str, Any]:
         """Honest response when the scan is not one of the 15 trained classes."""
         top = np.argsort(scores)[-3:][::-1]
@@ -150,7 +251,7 @@ class MLService:
                     f"Image is only {loaded.size[0]}x{loaded.size[1]}, which is too small to "
                     f"diagnose reliably; use a leaf photo at least {MIN_IMAGE_DIM}x{MIN_IMAGE_DIM} pixels"
                 )
-            image = loaded.convert("RGB").resize((224, 224))
+            image = ImageOps.exif_transpose(loaded).convert("RGB").resize((224, 224))
         except (UnidentifiedImageError, OSError) as error:
             raise ValueError("Upload a valid JPG, PNG, or WEBP leaf image") from error
         pixels = np.asarray(image, dtype=np.float32)  # Model expects 0-255 RGB pixels.

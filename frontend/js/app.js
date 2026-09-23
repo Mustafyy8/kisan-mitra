@@ -48,6 +48,25 @@ const COPY = {
   },
 };
 
+Object.assign(COPY.en, {
+  pest_model: "Pest screening",
+  pest_scope: "Local detection · 102 pest categories. Photograph the insect clearly and verify in the field.",
+  choose_pest_photo: "Choose a clear insect photo",
+  chat_intro: "Ask about farm data or attach a photo for local model analysis.",
+  chat_cloud_fallback: "Online explanation unavailable; showing the local model result.",
+  analyses_intro: "Open saved pest, leaf, crop, and soil results from this device.",
+  mode_edge: "Local · On device",
+});
+Object.assign(COPY.hi, {
+  pest_model: "कीट जांच",
+  pest_scope: "स्थानीय जांच · 102 कीट वर्ग। कीट की साफ फोटो लें और खेत में पुष्टि करें।",
+  choose_pest_photo: "कीट की साफ फोटो चुनें",
+  chat_intro: "खेत का डेटा पूछें या स्थानीय मॉडल जांच के लिए फोटो जोड़ें।",
+  chat_cloud_fallback: "ऑनलाइन सलाह उपलब्ध नहीं है; स्थानीय मॉडल का परिणाम दिख रहा है।",
+  analyses_intro: "इस डिवाइस पर सेव कीट, पत्ती, फसल और मिट्टी की जांच देखें।",
+  mode_edge: "स्थानीय · डिवाइस पर",
+});
+
 let language = localStorage.getItem("km-language") === "hi" ? "hi" : "en";
 let state = null;
 let lastHistory = [];
@@ -322,7 +341,7 @@ function analysisSummary(item) {
     return result.crops?.[0]?.crop || result.recommendation?.title || t("crop_model");
   }
   if (item.analysis_type === "pest") {
-    return result.summary || result.analysis?.slice(0, 80) || t("pest_model");
+    return result.label || result.summary || result.analysis?.slice(0, 80) || t("pest_model");
   }
   return result.fertility?.fertility || t("soil_model");
 }
@@ -471,7 +490,7 @@ function renderModelCards(models = state?.models) {
     { id: "disease", name: t("disease_model_card"), ready: true, description: t("scanner_help") },
     { id: "crop", name: t("crop_model"), ready: true, description: t("crop_disclaimer") },
     { id: "soil", name: t("soil_model"), ready: true, description: t("soil_nutrients") },
-    { id: "pest", name: t("pest_model"), ready: false, description: "Cloud image screening prototype; connect the server and configure Gemini to run it." },
+    { id: "pest", name: t("pest_model"), ready: false, description: t("pest_scope") },
   ];
   cards.replaceChildren();
   items.forEach((model) => {
@@ -483,9 +502,14 @@ function renderModelCards(models = state?.models) {
     const copy = document.createElement("span");
     copy.textContent = model.description || "";
     const status = document.createElement("small");
-    status.textContent = model.ready === false ? t("unavailable") : model.id === "pest" ? t("mode_cloud") : t("local");
+    status.textContent = model.ready === false ? t("unavailable") : t("local");
     button.append(title, copy, status);
-    button.addEventListener("click", () => selectModel(model.id));
+    button.addEventListener("click", () => {
+      selectModel(model.id);
+      if (window.matchMedia("(max-width: 700px)").matches) {
+        $("runnerTitle").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
     cards.append(button);
   });
 }
@@ -510,6 +534,7 @@ function selectModel(id) {
     $("modelSensorForm").querySelector(".sensor-source-note").textContent = t("sensor_auto");
   }
   $("modelResult").hidden = true;
+  $("modelDetectionOverlay").hidden = true;
   $("modelRunStatus").textContent = "";
 }
 
@@ -919,6 +944,7 @@ function setModelFile(file) {
   if (!file) return clearModelFile();
   const valid = ["image/jpeg", "image/png", "image/webp"].includes(file.type) && file.size <= 10 * 1024 * 1024;
   if (!valid) { clearModelFile(); showToast(t("bad_file"), true); return; }
+  $("modelDetectionOverlay").hidden = true;
   if (modelPreviewUrl) URL.revokeObjectURL(modelPreviewUrl);
   modelPreviewUrl = URL.createObjectURL(file);
   $("modelLeafPreview").src = modelPreviewUrl;
@@ -937,6 +963,41 @@ function clearModelFile() {
   $("modelUploadPlaceholder").hidden = false;
   $("runImageModelBtn").disabled = true;
   $("clearModelPhotoBtn").hidden = true;
+  $("modelDetectionOverlay").hidden = true;
+}
+
+function showPestBoxes(file, detections = []) {
+  const canvas = $("modelDetectionOverlay");
+  canvas.hidden = true;
+  if (!detections.length) return;
+  const photo = new Image();
+  const url = URL.createObjectURL(file);
+  photo.onload = () => {
+    const scale = Math.min(1, 900 / photo.naturalWidth);
+    canvas.width = Math.round(photo.naturalWidth * scale);
+    canvas.height = Math.round(photo.naturalHeight * scale);
+    const context = canvas.getContext("2d");
+    context.drawImage(photo, 0, 0, canvas.width, canvas.height);
+    context.font = "bold 13px system-ui, sans-serif";
+    detections.forEach(({ box, label, confidence }) => {
+      const [x1, y1, x2, y2] = box.map((value) => value * scale);
+      context.strokeStyle = "#f7ce54";
+      context.lineWidth = 3;
+      context.strokeRect(x1, y1, x2 - x1, y2 - y1);
+      const caption = `${label} ${Number(confidence).toFixed(0)}%`;
+      const captionWidth = Math.min(canvas.width - x1, context.measureText(caption).width + 12);
+      const captionY = y1 >= 23 ? y1 - 22 : y1;
+      context.fillStyle = "#18352b";
+      context.fillRect(x1, captionY, captionWidth, 22);
+      context.fillStyle = "#fff";
+      context.fillText(caption, x1 + 6, captionY + 15, Math.max(1, captionWidth - 12));
+    });
+    canvas.setAttribute("aria-label", `${detections.length} possible pest detections on the uploaded photo`);
+    canvas.hidden = false;
+    URL.revokeObjectURL(url);
+  };
+  photo.onerror = () => URL.revokeObjectURL(url);
+  photo.src = url;
 }
 
 $("modelLeafInput")?.addEventListener("change", (event) => setModelFile(event.target.files?.[0]));
@@ -963,9 +1024,10 @@ $("runImageModelBtn")?.addEventListener("click", async () => {
   form.append("image", file);
   try {
     const result = await api(selectedModel === "pest" ? "/api/models/pest" : "/api/disease", { method: "POST", body: form }, 125000);
-    const title = selectedModel === "pest" ? t("pest_model") : result.recognized === false ? t("not_recognized") : result.healthy ? t("healthy_leaf") : result.disease;
+    const title = selectedModel === "pest" ? (result.recognized ? result.label : t("not_recognized")) : result.recognized === false ? t("not_recognized") : result.healthy ? t("healthy_leaf") : result.disease;
     const body = selectedModel === "pest" ? result.analysis : `${localizedTreatment(result)} ${result.cloud_analysis || ""}`.trim();
-    showModelResult(title, body, result.speech || `${title}. ${body}`, selectedModel === "pest" || (result.recognized !== false && result.healthy), result.confidence != null ? `${Number(result.confidence).toFixed(1)}%` : "", result.mode);
+    showModelResult(title, body, result.speech || `${title}. ${body}`, selectedModel === "pest" ? result.recognized : (result.recognized !== false && result.healthy), result.confidence != null ? `${Number(result.confidence).toFixed(1)}%` : "", result.mode);
+    if (selectedModel === "pest") showPestBoxes(file, result.detections);
     if (selectedModel === "disease") showScan(result);
     renderActivity(await api("/api/activity"));
     renderAnalyses(await api("/api/analyses"));
@@ -990,14 +1052,10 @@ oldFieldPage.remove();
 document.querySelectorAll('[data-tab="field"]').forEach((button) => button.remove());
 document.querySelectorAll("#page-overview > :not(#landingPanel)").forEach((node) => node.classList.add("dashboard-private"));
 const mobileNav = document.querySelector(".mobile-nav");
-[["chat", "nav_chat"], ["rover", "nav_rover"]].forEach(([name, key]) => {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.dataset.tab = name;
-  const label = document.createElement("span");
-  label.dataset.i18n = key;
-  label.textContent = t(key);
-  button.append(label);
+[["chat", "nav_chat"], ["rover", "nav_rover"]].forEach(([name]) => {
+  const button = $(`tab-${name}`).cloneNode(true);
+  ["id", "role", "aria-selected", "aria-controls", "tabindex"].forEach((attribute) => button.removeAttribute(attribute));
+  button.className = "";
   button.addEventListener("click", () => activateTab(name));
   mobileNav.insertBefore(button, mobileNav.querySelector('[data-tab="history"]'));
 });

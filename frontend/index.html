@@ -94,13 +94,14 @@
           <div class="scan-result" id="modelResult" hidden>
             <div class="result-top"><span class="result-icon" id="modelResultIcon" aria-hidden="true"></span><div><small data-i18n="model_result">Model result</small><strong id="modelResultTitle"></strong></div><span class="confidence" id="modelResultConfidence"></span></div>
             <p id="modelResultBody"></p>
+            <canvas id="modelDetectionOverlay" class="detection-overlay" role="img" aria-label="Pest detections on the uploaded photo" hidden></canvas>
             <div class="result-actions"><button class="listen-button" id="modelListenBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4h4l5 5V5L7 10H3Zm13.5 2a3.5 3.5 0 0 0-1.8-3.1v6.2A3.5 3.5 0 0 0 16.5 12ZM15 4.2v2.1a6.5 6.5 0 0 1 0 11.4v2.1a8.5 8.5 0 0 0 0-15.6Z"/></svg><span data-i18n="listen">Listen</span></button><div class="tts-langs" role="group"><button type="button" class="is-active" data-tts-lang="en" data-for="model">EN</button><button type="button" data-tts-lang="hi" data-for="model">हिंदी</button></div></div>
           </div>
         </section>
       </section>
 
       <section class="page" id="page-history" role="tabpanel" aria-labelledby="tab-history" hidden>
-        <header class="page-header compact"><div><p class="overline" data-i18n="nav_history">History</p><h1 data-i18n="analyses_title">Saved analyses</h1></div><p data-i18n="analyses_intro">Open any previous disease, crop, or soil result stored on this device.</p></header>
+        <header class="page-header compact"><div><p class="overline" data-i18n="nav_history">History</p><h1 data-i18n="analyses_title">Saved analyses</h1></div><p data-i18n="analyses_intro">Open saved pest, leaf, crop, and soil results from this device.</p></header>
         <div class="history-layout">
           <section class="panel" aria-labelledby="analysesListTitle"><div class="section-row"><h2 id="analysesListTitle" data-i18n="past_analyses">Past analyses</h2><span class="muted-label" id="analysesCount"></span></div><div class="analysis-list" id="analysisList"><p class="empty" data-i18n="analyses_empty">Run a model to start saving history.</p></div></section>
           <section class="panel" aria-labelledby="analysisDetailTitle"><div class="section-row"><h2 id="analysisDetailTitle" data-i18n="analysis_detail">Result</h2></div><div id="analysisDetail"><p class="empty" data-i18n="select_analysis">Select an analysis to view it.</p></div></section>
@@ -108,10 +109,10 @@
       </section>
 
       <section class="page" id="page-chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
-        <header class="page-header compact"><div><p class="overline" data-i18n="nav_chat">Chatbot</p><h1 data-i18n="chat_title">Ask Kisan Mitra</h1></div><p data-i18n="chat_intro">Cloud answers when available, with local sensor guidance offline.</p></header>
+        <header class="page-header compact"><div><p class="overline" data-i18n="nav_chat">Chatbot</p><h1 data-i18n="chat_title">Ask Kisan Mitra</h1></div><p data-i18n="chat_intro">Ask about farm data or attach a photo for local model analysis.</p></header>
         <section class="panel chat-panel">
           <div class="chat-log" id="chatLog" aria-live="polite"><p class="empty" data-i18n="chat_empty">Ask about your sensors, soil, crops, or leaf scans.</p></div>
-          <div class="chat-attachment" id="chatAttachment" hidden><img id="chatPreview" alt="Selected image"><span id="chatFileName"></span><label for="chatRoute" class="visually-hidden" data-i18n="chat_route">Image analysis route</label><select id="chatRoute"><option value="auto" data-i18n="chat_auto">Auto route</option><option value="disease" data-i18n="disease_model_card">Leaf disease detection</option><option value="pest" data-i18n="pest_model">Pest detection (prototype)</option></select><button type="button" class="secondary-button" id="chatRemoveImage" data-i18n="remove">Remove</button></div>
+          <div class="chat-attachment" id="chatAttachment" hidden><img id="chatPreview" alt="Selected image"><span id="chatFileName"></span><label for="chatRoute" class="visually-hidden" data-i18n="chat_route">Image analysis route</label><select id="chatRoute"><option value="auto" data-i18n="chat_auto">Auto route</option><option value="disease" data-i18n="disease_model_card">Leaf disease detection</option><option value="pest" data-i18n="pest_model">Pest screening</option></select><button type="button" class="secondary-button" id="chatRemoveImage" data-i18n="remove">Remove</button></div>
           <form id="chatForm" class="chat-form"><label class="chat-attach-button" for="chatImage" data-i18n="chat_attach">Attach image</label><input id="chatImage" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp"><label class="visually-hidden" for="chatInput" data-i18n="chat_message">Message</label><input id="chatInput" maxlength="1200" data-i18n-placeholder="chat_placeholder" placeholder="Ask a farm question…"><button class="primary-button" type="submit" data-i18n="send">Send</button></form>
           <p class="form-status" id="chatStatus" role="status" aria-live="polite"></p>
         </section>

@@ -1,7 +1,6 @@
 """Optional Gemini analysis. A failed request leaves local model results usable."""
 from __future__ import annotations
 
-import base64
 import json
 import os
 import re
@@ -27,44 +26,36 @@ class CloudService:
     def __init__(self) -> None:
         self.key = os.environ.get("GEMINI_API_KEY", "").strip()
         self.model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
-        self.image_fallback_models = tuple(
-            name.strip() for name in os.environ.get("GEMINI_IMAGE_FALLBACK_MODELS", "gemini-3.1-flash-lite").split(",")
-            if name.strip()
-        )
 
     @property
     def configured(self) -> bool:
         return bool(self.key)
 
-    def generate(self, prompt: str, image: bytes | None = None, mime: str = "image/jpeg") -> str:
-        return self.generate_result(prompt, image, mime).text
+    def generate(self, prompt: str) -> str:
+        return self.generate_result(prompt).text
 
-    def generate_result(self, prompt: str, image: bytes | None = None, mime: str = "image/jpeg") -> CloudResult:
+    def generate_result(self, prompt: str) -> CloudResult:
         if not self.configured:
-            raise CloudError("not_configured", "Gemini is not configured for cloud image analysis.")
+            raise CloudError("not_configured", "Gemini is not configured for online text guidance.")
         parts: list[dict] = [{"text": prompt}]
-        if image is not None:
-            parts.insert(0, {"inline_data": {"mime_type": mime, "data": base64.b64encode(image).decode("ascii")}})
         payload = json.dumps({"contents": [{"parts": parts}]}).encode("utf-8")
-        models = list(dict.fromkeys((self.model, *(self.image_fallback_models if image is not None else ()))))
+        models = [self.model]
         failures: list[CloudError] = []
         for index, model in enumerate(models):
             try:
-                return CloudResult(self._request(model, payload, image is not None, retry=index == len(models) - 1), model)
+                return CloudResult(self._request(model, payload, retry=index == len(models) - 1), model)
             except CloudError as error:
                 failures.append(error)
                 if error.kind not in {"rate_limit", "server", "timeout", "model_unavailable"}:
                     raise
-        if len(failures) > 1 and len({error.kind for error in failures}) > 1:
-            raise CloudError("unavailable", "Gemini image models are rate limited or temporarily unavailable. Try again later.")
         raise failures[-1]
 
-    def _request(self, model: str, payload: bytes, has_image: bool, retry: bool) -> str:
+    def _request(self, model: str, payload: bytes, retry: bool) -> str:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         req = Request(url, data=payload, headers={"x-goog-api-key": self.key, "Content-Type": "application/json"}, method="POST")
         for attempt in range(2 if retry else 1):
             try:
-                with urlopen(req, timeout=30 if has_image else 15) as response:
+                with urlopen(req, timeout=15) as response:
                     data = json.loads(response.read().decode("utf-8"))
                 text = " ".join(
                     part["text"]
@@ -73,7 +64,7 @@ class CloudService:
                     if part.get("text")
                 ).strip()
                 if not text:
-                    raise CloudError("empty", "Gemini returned no analysis. Try another image.")
+                    raise CloudError("empty", "Gemini returned no text. Try again shortly.")
                 return text[:4000]
             except HTTPError as error:
                 detail = error.read().decode("utf-8", errors="replace")
@@ -87,7 +78,7 @@ class CloudService:
                 elif error.code in {500, 502, 503, 504}:
                     failure = CloudError("server", "Gemini is temporarily unavailable. Try again shortly.")
                 else:
-                    failure = CloudError("request", "Gemini could not analyze this image. Check the model settings and image.")
+                    failure = CloudError("request", "Gemini could not generate text. Check the model settings.")
                 if attempt == 0 and retry and error.code in {429, 500, 502, 503, 504}:
                     delay = 0.35
                     if error.code == 429:
