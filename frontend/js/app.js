@@ -779,7 +779,7 @@ $("chatForm").addEventListener("submit", async (event) => {
     const reply = document.createElement("div");
     reply.className = "chat-message assistant";
     const mode = document.createElement("small");
-    mode.textContent = t(result.mode === "cloud" ? "mode_cloud" : "mode_edge");
+    mode.textContent = t(result.mode === "cloud" ? "mode_cloud" : "local");
     const text = document.createElement("p");
     text.textContent = result.answer;
     if (file) {
@@ -801,7 +801,7 @@ $("chatForm").addEventListener("submit", async (event) => {
       if (result.cloud_followup !== "completed") {
         const notice = document.createElement("small");
         notice.className = "chat-model-note";
-        notice.textContent = t("chat_cloud_fallback");
+        notice.textContent = result.cloud_error || t("chat_cloud_fallback");
         reply.append(notice);
       }
       const history = document.createElement("button");

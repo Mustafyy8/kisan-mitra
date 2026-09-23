@@ -39,6 +39,7 @@ Then edit `.env`:
 - **`KISAN_API_TOKEN`** *(optional)* — when set, non-auth writes (`POST /api/sensors`, `/api/disease`, `/api/profile`, `/api/models/*`, and `/api/chat/image`) require an `Authorization: Bearer <token>` header. A signed-in dashboard session also grants write access.
 - **`OPENWEATHER_API_KEY`** / **`OPENWEATHER_CITY`** *(optional)* — live temperature/humidity/rainfall from OpenWeatherMap, with automatic fallback to local sensors when offline (see Production notes).
 - **`GEMINI_API_KEY`** / **`GEMINI_MODEL`** *(optional)* — enables cloud agronomy explanations, cloud chat, and prototype pest screening. Local disease/crop/soil models still run first and remain the fallback if Gemini is unavailable.
+- **`GEMINI_IMAGE_FALLBACK_MODELS`** *(optional)* — comma-separated image-capable Gemini models to try when the selected model is rate limited, times out, or is temporarily unavailable. Defaults to `gemini-3.1-flash-lite`; set it to an empty value to disable fallback. Available quota depends on your Google project.
 
 ### 4. Start the edge server
 

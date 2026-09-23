@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 
 import edge_server
-from cloud_service import CloudService
+from cloud_service import CloudError, CloudResult, CloudService
 from ml_service import MLService
 
 
@@ -40,6 +40,33 @@ class CloudServiceTests(unittest.TestCase):
              mock.patch("cloud_service.time.sleep") as sleep:
             self.assertEqual(service.generate("Hello"), "Ready")
         sleep.assert_called_once_with(3.0)
+
+    def test_image_rate_limit_uses_fallback_and_reports_model(self):
+        service = CloudService()
+        service.key = "test-key"
+        service.image_fallback_models = ("gemini-3.1-flash-lite",)
+        error = HTTPError(
+            "https://generativelanguage.googleapis.com", 429, "rate limit", {},
+            BytesIO(b'{"error":{"message":"Quota exceeded"}}'),
+        )
+
+        class Reply:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b'{"candidates":[{"content":{"parts":[{"text":"Check the underside of the leaf."}]}}]}'
+
+        with mock.patch("cloud_service.urlopen", side_effect=[error, Reply()]) as request, \
+             mock.patch("cloud_service.time.sleep") as sleep:
+            result = service.generate_result("Check for pests", b"image-bytes")
+        self.assertEqual(result.model, "gemini-3.1-flash-lite")
+        self.assertIn("underside", result.text)
+        self.assertIn("gemini-3.1-flash-lite", request.call_args.args[0].full_url)
+        sleep.assert_not_called()
 
 
 class MLServiceTests(unittest.TestCase):
@@ -444,7 +471,7 @@ class EdgeAPITests(unittest.TestCase):
         }
         edge_server.cloud.key = "test-key"
         with mock.patch.object(edge_server.ml, "diagnose", return_value=local_result) as diagnose, \
-             mock.patch.object(edge_server.cloud, "generate", return_value="The local model found a healthy tomato leaf.") as generate:
+             mock.patch.object(edge_server.cloud, "generate_result", return_value=CloudResult("The local model found a healthy tomato leaf.", edge_server.cloud.model)) as generate:
             response = self.client.post(
                 "/api/chat/image",
                 data={"image": (BytesIO(image_path.read_bytes()), image_path.name), "message": "Is it healthy?", "route": "auto"},
@@ -468,10 +495,9 @@ class EdgeAPITests(unittest.TestCase):
         buffer.seek(0)
         edge_server.cloud.key = "test-key"
         with mock.patch.object(edge_server.ml, "diagnose") as diagnose, \
-             mock.patch.object(edge_server.cloud, "generate", side_effect=[
-                 "Aphids may be visible; inspect the leaf underside.",
-                 "The pest screen suggests aphids. Check the underside before acting.",
-             ]) as generate:
+             mock.patch.object(edge_server.cloud, "generate_result", return_value=CloudResult(
+                 "Aphids may be visible; inspect the leaf underside.", "gemini-3.1-flash-lite"
+             )) as generate:
             response = self.client.post(
                 "/api/chat/image",
                 data={"image": (buffer, "leaf.jpg"), "message": "Are there aphids?", "route": "auto"},
@@ -480,9 +506,25 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json["analysis_type"], "pest")
         self.assertEqual(response.json["mode"], "cloud")
-        self.assertEqual(generate.call_count, 2)
-        self.assertIn("Aphids may be visible", generate.call_args.args[0])
+        self.assertEqual(response.json["model"], "gemini-3.1-flash-lite")
+        self.assertEqual(generate.call_count, 1)
+        self.assertIn("Are there aphids?", generate.call_args.args[0])
         diagnose.assert_not_called()
+
+    def test_pest_quota_error_is_actionable(self):
+        buffer = BytesIO()
+        Image.new("RGB", (224, 224), (80, 140, 60)).save(buffer, format="JPEG")
+        buffer.seek(0)
+        edge_server.cloud.key = "test-key"
+        with mock.patch.object(edge_server.cloud, "generate_result", side_effect=CloudError(
+            "rate_limit", "Gemini request limit reached. Try again later or use a model with available quota."
+        )):
+            response = self.client.post(
+                "/api/models/pest", data={"image": (buffer, "leaf.jpg")}, content_type="multipart/form-data",
+            )
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json["reason"], "rate_limit")
+        self.assertIn("request limit", response.json["error"])
 
     def test_chat_image_offline_auto_keeps_local_result(self):
         buffer = BytesIO()
@@ -499,6 +541,26 @@ class EdgeAPITests(unittest.TestCase):
         self.assertEqual(response.json["analysis_type"], "disease")
         self.assertEqual(response.json["mode"], "edge")
         self.assertIn("Not recognized", response.json["answer"])
+
+    def test_chat_image_cloud_limit_keeps_local_result_and_reason(self):
+        buffer = BytesIO()
+        Image.new("RGB", (224, 224), (80, 140, 60)).save(buffer, format="JPEG")
+        buffer.seek(0)
+        edge_server.cloud.key = "test-key"
+        local_result = {"recognized": False, "label": "Unknown", "disease": "Not recognized", "healthy": False, "treatment": "Take a clearer photo."}
+        with mock.patch.object(edge_server.ml, "diagnose", return_value=local_result), \
+             mock.patch.object(edge_server.cloud, "generate_result", side_effect=CloudError(
+                 "rate_limit", "Gemini request limit reached. Try again later or use a model with available quota."
+             )) as generate:
+            response = self.client.post(
+                "/api/chat/image", data={"image": (buffer, "leaf.jpg"), "route": "auto"},
+                content_type="multipart/form-data",
+            )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json["mode"], "edge")
+        self.assertIn("request limit", response.json["cloud_error"])
+        self.assertIn("Not recognized", response.json["answer"])
+        generate.assert_called_once()
 
     def test_tts_prepares_english_and_hindi_payloads(self):
         en = self.client.post("/api/tts", json={"text": "Healthy leaf", "lang": "en"})
